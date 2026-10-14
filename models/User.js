@@ -13,6 +13,29 @@ const UserSchema = new mongoose.Schema({
     nin: { type: String, default: null },
     isKycVerified: { type: Boolean, default: false },
 
+    // Multi-Currency Dedicated Virtual Accounts
+    accounts: {
+        usd: {
+            bankName: { type: String, default: 'Community Federal Savings Bank' },
+            accountNumber: { type: String, default: null },
+            routingNumber: { type: String, default: null }
+        },
+        eur: {
+            bankName: { type: String, default: 'Banking Circle S.A.' },
+            iban: { type: String, default: null },
+            bic: { type: String, default: null }
+        },
+        gbp: {
+            bankName: { type: String, default: 'Modulr FS Limited' },
+            accountNumber: { type: String, default: null },
+            sortCode: { type: String, default: null }
+        },
+        ngn: {
+            bankName: { type: String, default: 'Wema Bank' },
+            accountNumber: { type: String, default: null }
+        }
+    },
+
     createdAt: { type: Date, default: Date.now }
 });
 

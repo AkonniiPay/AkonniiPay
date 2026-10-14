@@ -46,10 +46,16 @@ router.post(
 
             await newLink.save();
 
+            const baseUrl = req.protocol + '://' + req.get('host');
+
             res.status(201).json({
                 message: 'Payment link created successfully!',
-                paymentUrl: `http://localhost:5000/api/payment/checkout/${slug}`,
-                linkDetails: newLink
+                id: newLink._id,
+                linkId: newLink._id,
+                slug: newLink.slug,
+                paymentUrl: `${baseUrl}/checkout.html?id=${newLink._id}`,
+                linkDetails: newLink,
+                paymentLink: newLink
             });
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -62,18 +68,21 @@ router.post(
 // -------------------------------------------------------------
 router.get('/checkout/:slug', async (req, res) => {
     try {
-        const paymentLink = await PaymentLink.findOne({ slug: req.params.slug }).populate('merchant', 'name email');
+        const paymentLink = await PaymentLink.findOne({ 
+            $or: [{ slug: req.params.slug }, { _id: req.params.slug }] 
+        }).populate('merchant', 'name email');
 
         if (!paymentLink || !paymentLink.isActive) {
             return res.status(404).json({ message: 'Payment link not found or inactive.' });
         }
 
         res.json({
+            id: paymentLink._id,
             title: paymentLink.title,
             amount: paymentLink.amount,
             currency: paymentLink.currency,
             description: paymentLink.description,
-            recipientName: paymentLink.merchant.name,
+            recipientName: paymentLink.merchant ? paymentLink.merchant.name : 'Merchant',
             slug: paymentLink.slug,
             supportedMethods: ['card', 'paypal', 'wise', 'bank_wire']
         });
@@ -101,7 +110,9 @@ router.post(
             const { paymentMethod, guestEmail, guestName, customAmount } = req.body;
             const selectedMethod = paymentMethod.toLowerCase();
 
-            const paymentLink = await PaymentLink.findOne({ slug: req.params.slug });
+            const paymentLink = await PaymentLink.findOne({ 
+                $or: [{ slug: req.params.slug }, { _id: req.params.slug }] 
+            });
             if (!paymentLink || !paymentLink.isActive) {
                 return res.status(404).json({ message: 'Payment link not found or inactive.' });
             }
@@ -120,11 +131,11 @@ router.post(
 
             const reference = 'PAY_' + selectedMethod.toUpperCase() + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
-            // Credit merchant balance directly
-            merchant.walletBalance += finalAmount;
+            // Credit merchant wallet balance directly
+            merchant.walletBalance = (merchant.walletBalance || 0) + finalAmount;
             await merchant.save();
 
-            // Record completed transaction with currency
+            // Record completed transaction
             const transaction = new Transaction({
                 user: merchant._id,
                 type: 'deposit',

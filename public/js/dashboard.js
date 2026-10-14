@@ -10,18 +10,40 @@ function handleLogout() {
   localStorage.removeItem('token');
   window.location.href = '/login.html';
 }
-document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-document.getElementById('sidebarLogout').addEventListener('click', handleLogout);
+
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
+const sidebarLogout = document.getElementById('sidebarLogout');
+if (sidebarLogout) sidebarLogout.addEventListener('click', handleLogout);
 
 // Modal Controls
-function openKycModal() { document.getElementById('kycModal').classList.remove('hidden'); }
-function closeKycModal() { document.getElementById('kycModal').classList.add('hidden'); }
+function openKycModal() { 
+  document.getElementById('kycModal').classList.remove('hidden'); 
+}
+function closeKycModal() { 
+  document.getElementById('kycModal').classList.add('hidden'); 
+}
 
-function openWithdrawModal() { document.getElementById('withdrawModal').classList.remove('hidden'); }
-function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hidden'); }
+function openWithdrawModal() { 
+  document.getElementById('withdrawModal').classList.remove('hidden'); 
+}
+function closeWithdrawModal() { 
+  document.getElementById('withdrawModal').classList.add('hidden'); 
+}
 
 function toggleLinksView() {
   document.getElementById('linkSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Mobile Sidebar Toggle
+function toggleMobileMenu() {
+  const sidebar = document.querySelector('aside');
+  sidebar.classList.toggle('hidden');
+  sidebar.classList.toggle('fixed');
+  sidebar.classList.toggle('inset-0');
+  sidebar.classList.toggle('z-50');
+  sidebar.classList.toggle('w-full');
 }
 
 // Load Dashboard Data & Balances
@@ -102,8 +124,13 @@ const createLinkForm = document.getElementById('createLinkForm');
 if (createLinkForm) {
   createLinkForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const title = document.getElementById('linkTitle').value;
+    const title = document.getElementById('linkTitle').value.trim();
     const amount = document.getElementById('linkAmount').value;
+
+    if (!title || !amount) {
+      alert('Please fill in both the title and the amount.');
+      return;
+    }
 
     try {
       const res = await fetch(`${API_URL}/api/payment/create-link`, {
@@ -112,15 +139,31 @@ if (createLinkForm) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ title, amount })
+        body: JSON.stringify({ 
+          title: title, 
+          amount: Number(amount),
+          currency: 'USD' 
+        })
       });
+      
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to create link');
 
-      const linkId = data.id || data.linkId || data._id || (data.paymentLink && data.paymentLink._id);
-      if (!linkId) throw new Error('Payment link ID was not returned by the server.');
+      if (!res.ok) {
+        const errorMsg = data.message || (data.errors && data.errors.join(', ')) || 'Failed to generate link.';
+        throw new Error(errorMsg);
+      }
 
-      const checkoutUrl = `${API_URL}/checkout.html?id=${linkId}`;
+      // Extract ID or Slug across all backend response structures
+      const linkIdentifier = data.id || data.linkId || data._id || 
+                             (data.linkDetails && (data.linkDetails.slug || data.linkDetails._id)) ||
+                             (data.paymentLink && (data.paymentLink.slug || data.paymentLink._id));
+
+      if (!linkIdentifier) {
+        console.error('Server returned response without ID:', data);
+        throw new Error('Server created link, but did not return a valid link ID.');
+      }
+
+      const checkoutUrl = `${API_URL}/checkout.html?id=${linkIdentifier}`;
       document.getElementById('generatedUrl').innerText = checkoutUrl;
       document.getElementById('generatedLinkBox').classList.remove('hidden');
     } catch (err) {
