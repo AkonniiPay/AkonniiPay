@@ -8,9 +8,13 @@ dotenv.config();
 
 const app = express();
 
+// Trust Render's proxy (Required for express-rate-limit and IP detection on Render)
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Connection
@@ -24,9 +28,9 @@ app.use('/api/kyc', require('./routes/kyc'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/webhook', require('./routes/webhook'));
-app.use('/api/user', require('./routes/user')); // User Settings & Profile Route
+app.use('/api/user', require('./routes/user'));
 
-// Serve Frontend SPA / Static Pages Fallback
+// Fallback route for SPA / HTML pages
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
