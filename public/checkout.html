@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AkonniiPay - Secure Guest Checkout</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Paystack Inline Popup Script -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
 </head>
 <body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4 font-sans">
 
@@ -40,22 +42,20 @@
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Payment Method</label>
+        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Payment Channel</label>
         <select id="paymentMethod" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
-          <option value="card">Credit / Debit Card</option>
-          <option value="paypal">PayPal</option>
-          <option value="wise">Wise</option>
-          <option value="bank_wire">Bank Wire Transfer</option>
+          <option value="card">Debit / Credit Card</option>
+          <option value="bank_transfer">Bank Transfer / USSD</option>
         </select>
       </div>
 
-      <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
-        Complete Payment
+      <button type="submit" id="payBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+        Pay Now
       </button>
     </form>
 
     <div class="text-center">
-      <span class="text-xs text-gray-500">🔒 Protected by AkonniiPay Secure Escrow & Encryption</span>
+      <span class="text-xs text-gray-500">🔒 Encrypted & Secured by AkonniiPay</span>
     </div>
   </div>
 
@@ -63,6 +63,8 @@
     const API_URL = window.location.origin;
     const urlParams = new URLSearchParams(window.location.search);
     const linkIdentifier = urlParams.get('id') || urlParams.get('slug');
+
+    let linkData = null;
 
     async function loadCheckoutDetails() {
       if (!linkIdentifier) {
@@ -84,6 +86,7 @@
           return;
         }
 
+        linkData = data;
         document.getElementById('checkoutTitle').innerText = data.title;
         document.getElementById('checkoutDescription').innerText = data.description || '';
         
@@ -100,24 +103,59 @@
       e.preventDefault();
       const guestName = document.getElementById('guestName').value;
       const guestEmail = document.getElementById('guestEmail').value;
-      const paymentMethod = document.getElementById('paymentMethod').value;
 
+      if (!linkData) return alert('Payment data not loaded.');
+
+      // Convert amount to kobo (Paystack requires amount in lowest currency unit)
+      const amountInSubunits = Math.round(Number(linkData.amount) * 100);
+      const reference = 'AKP_PAY_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+      // Initialize Paystack Popup
+      const paystackKey = 'pk_test_sample_key'; // Replace with process.env / public key in production
+
+      if (typeof PaystackPop !== 'undefined') {
+        const handler = PaystackPop.setup({
+          key: paystackKey,
+          email: guestEmail,
+          amount: amountInSubunits,
+          currency: linkData.currency || 'USD',
+          ref: reference,
+          metadata: {
+            guestName,
+            linkId: linkData.id,
+            merchantId: linkData.merchantId
+          },
+          callback: function(response) {
+            // Verify transaction on backend
+            verifyPaymentOnBackend(response.reference, guestName, guestEmail);
+          },
+          onClose: function() {
+            alert('Payment window closed.');
+          }
+        });
+        handler.openIframe();
+      } else {
+        // Direct simulation fallback if script is blocked
+        verifyPaymentOnBackend(reference, guestName, guestEmail);
+      }
+    });
+
+    async function verifyPaymentOnBackend(reference, guestName, guestEmail) {
       try {
         const res = await fetch(`${API_URL}/api/payment/checkout/${linkIdentifier}/pay`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ guestName, guestEmail, paymentMethod })
+          body: JSON.stringify({ reference, guestName, guestEmail, paymentMethod: 'card' })
         });
         const data = await res.json();
-
-        if (!res.ok) throw new Error(data.message || 'Payment processing failed');
+        if (!res.ok) throw new Error(data.message || 'Payment verification failed');
 
         alert(data.message);
         window.location.reload();
       } catch (err) {
         alert(err.message);
       }
-    });
+    }
 
     loadCheckoutDetails();
   </script>

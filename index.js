@@ -43,6 +43,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/kyc', require('./routes/kyc'));
+app.use('/api/webhook', require('./routes/webhook')); // Step 2: Webhook funding listener
 
 // Base Route
 app.get('/', (req, res) => {
