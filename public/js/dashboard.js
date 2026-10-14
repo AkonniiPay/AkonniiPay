@@ -1,12 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('token');
     const currentPath = window.location.pathname;
 
-    // List of public routes that don't require authentication
-    const publicRoutes = ['/login', '/signup', '/', '/index.html', '/checkout'];
-    const isPublicRoute = publicRoutes.some(route => currentPath === route || currentPath.startsWith('/checkout'));
+    // Public pages that don't need authentication
+    const publicPages = ['/login', '/signup', '/', '/index.html', '/checkout'];
+    const isPublicPage = publicPages.some(page => currentPath === page || currentPath.startsWith('/checkout'));
 
-    // Handle Login Page Logic
+    // Handle Login Page Submission
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -24,12 +23,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await res.json();
 
                 if (res.ok) {
-                    // Save auth token & session flag
-                    localStorage.setItem('token', data.token);
-                    sessionStorage.setItem('activeSession', 'true');
+                    // Save token to sessionStorage (wipes on page reload/close)
+                    sessionStorage.setItem('token', data.token);
                     window.location.href = '/dashboard';
                 } else {
-                    alert(data.message || 'Login failed. Please check your credentials.');
+                    alert(data.message || 'Login failed. Invalid credentials.');
                 }
             } catch (err) {
                 console.error('Login error:', err);
@@ -39,73 +37,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Protected Route Verification: If user has no valid token on a private page, send to /login
-    if (!token && !isPublicRoute) {
+    // Protected Route Check: Force redirect to /login on page reload (when token is empty in sessionStorage)
+    const token = sessionStorage.getItem('token');
+    if (!token && !isPublicPage) {
         window.location.href = '/login';
         return;
     }
 
-    // If on Dashboard Home Page
+    // Sign Out Button Logic
+    const signOutBtn = document.getElementById('signOutBtn');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', () => {
+            sessionStorage.clear();
+            window.location.href = '/login';
+        });
+    }
+
+    // Load Dashboard Content
     if (document.getElementById('paymentLinksTableBody')) {
         fetchPaymentLinks(token);
     }
 
-    // If on Settings Page
+    // Load Profile Settings
     if (document.getElementById('viewMode')) {
         loadUserProfile(token);
     }
 
-    // Handle Settings Edit Mode Toggle
-    const toggleEditBtn = document.getElementById('toggleEditBtn');
-    const cancelEditBtn = document.getElementById('cancelEditBtn');
-    const viewMode = document.getElementById('viewMode');
-    const settingsForm = document.getElementById('settingsForm');
-
-    if (toggleEditBtn && settingsForm) {
-        toggleEditBtn.addEventListener('click', () => {
-            viewMode.classList.toggle('d-none');
-            settingsForm.classList.toggle('d-none');
-        });
-    }
-
-    if (cancelEditBtn && settingsForm) {
-        cancelEditBtn.addEventListener('click', () => {
-            viewMode.classList.remove('d-none');
-            settingsForm.classList.add('d-none');
-        });
-    }
-
-    // Save Settings Submission
-    if (settingsForm) {
-        settingsForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fullName = document.getElementById('settingsName').value;
-            const address = document.getElementById('settingsAddress').value;
-            const occupation = document.getElementById('settingsOccupation').value;
-
-            try {
-                const res = await fetch('/api/user/profile', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ fullName, address, occupation })
-                });
-
-                if (res.ok) {
-                    alert('Settings updated successfully!');
-                    window.location.reload();
-                } else {
-                    alert('Failed to update settings.');
-                }
-            } catch (err) {
-                console.error('Error saving settings:', err);
-            }
-        });
-    }
-
-    // Handle Payment Link Creation Form
+    // Handle Payment Link Form
     const createLinkForm = document.getElementById('createLinkForm');
     if (createLinkForm) {
         createLinkForm.addEventListener('submit', async (e) => {
@@ -142,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Load Profile Data
+// Fetch User Profile
 async function loadUserProfile(token) {
     try {
         const res = await fetch('/api/user/profile', {
@@ -152,24 +110,20 @@ async function loadUserProfile(token) {
 
         if (res.ok) {
             if (document.getElementById('displayFullName')) {
-                document.getElementById('displayFullName').innerText = user.fullName || 'Merchant Name';
+                document.getElementById('displayFullName').innerText = user.fullName || 'Merchant';
                 document.getElementById('settingsName').value = user.fullName || '';
             }
             if (document.getElementById('displayAddress')) {
                 document.getElementById('displayAddress').innerText = user.address || 'Not provided yet';
                 document.getElementById('settingsAddress').value = user.address || '';
             }
-            if (document.getElementById('displayOccupation')) {
-                document.getElementById('displayOccupation').innerText = user.occupation || 'Not provided yet';
-                document.getElementById('settingsOccupation').value = user.occupation || '';
-            }
         }
     } catch (err) {
-        console.error('Error loading user profile:', err);
+        console.error('Error loading profile:', err);
     }
 }
 
-// Fetch Payment Links Table
+// Fetch Payment Links
 async function fetchPaymentLinks(token) {
     const tableBody = document.getElementById('paymentLinksTableBody');
     if (!tableBody) return;
@@ -199,14 +153,8 @@ async function fetchPaymentLinks(token) {
                 `;
                 tableBody.innerHTML += row;
             });
-        } else {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">No payment links created yet.</td>
-                </tr>
-            `;
         }
     } catch (err) {
-        console.error('Error fetching links:', err);
+        console.error('Error loading links:', err);
     }
 }
