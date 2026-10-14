@@ -12,12 +12,14 @@
         .sidebar a { color: #a3aed0; text-decoration: none; padding: 12px 20px; display: block; font-weight: 500; }
         .sidebar a:hover, .sidebar a.active { color: #fff; background: #2b3149; border-left: 4px solid #4318ff; }
         .main-content { padding: 30px; }
+        .max-w-600 { max-width: 600px; }
     </style>
 </head>
 <body>
 
 <div class="container-fluid">
     <div class="row">
+        <!-- Sidebar Navigation -->
         <div class="col-md-2 sidebar d-none d-md-block">
             <h4 class="text-center mb-4 text-white">AkonniiPay</h4>
             <a href="/dashboard"><i class="fa-solid fa-house me-2"></i> 🏠 Home</a>
@@ -27,6 +29,7 @@
             <a href="/settings"><i class="fa-solid fa-gear me-2"></i> ⚙️ Settings</a>
         </div>
 
+        <!-- Main Content -->
         <div class="col-md-10 main-content">
             <h2 class="mb-4">Generate Payment Link</h2>
             
@@ -47,6 +50,10 @@
                                 <select id="linkCurrency" class="form-select">
                                     <option value="NGN">NGN (Nigerian Naira)</option>
                                     <option value="USD">USD (US Dollar)</option>
+                                    <option value="GBP">GBP (British Pound)</option>
+                                    <option value="EUR">EUR (Euro)</option>
+                                    <option value="CAD">CAD (Canadian Dollar)</option>
+                                    <option value="GHS">GHS (Ghanaian Cedi)</option>
                                 </select>
                             </div>
                         </div>
