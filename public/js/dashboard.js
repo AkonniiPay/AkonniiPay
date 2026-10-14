@@ -1,63 +1,116 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Session token check - redirect to login if missing
     const token = localStorage.getItem('token');
+    
+    // Auto-redirect to login on fresh reload if session storage flag is set
+    if (!sessionStorage.getItem('activeSession')) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+    }
 
-    // Fetch user dashboard data & payment links if on dashboard home
+    if (!token && window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+        window.location.href = '/login';
+        return;
+    }
+
+    // Load Profile Settings Data
+    if (document.getElementById('viewMode')) {
+        loadUserProfile(token);
+    }
+
+    // Load Dashboard Payment Link Records
     if (document.getElementById('paymentLinksTableBody')) {
         fetchPaymentLinks(token);
     }
 
-    // Handle Payment Link Creation Form
-    const createLinkForm = document.getElementById('createLinkForm');
-    if (createLinkForm) {
-        createLinkForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+    // Toggle Settings Edit Mode
+    const toggleEditBtn = document.getElementById('toggleEditBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const viewMode = document.getElementById('viewMode');
+    const settingsForm = document.getElementById('settingsForm');
 
-            const title = document.getElementById('linkTitle').value;
-            const amount = document.getElementById('linkAmount').value;
-            const currency = document.getElementById('linkCurrency').value;
+    if (toggleEditBtn && settingsForm) {
+        toggleEditBtn.addEventListener('click', () => {
+            viewMode.classList.toggle('d-none');
+            settingsForm.classList.toggle('d-none');
+        });
+    }
+
+    if (cancelEditBtn) {
+        cancelEditBtn.addEventListener('click', () => {
+            viewMode.classList.remove('d-none');
+            settingsForm.classList.add('d-none');
+        });
+    }
+
+    // Handle Settings Form Submission
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('settingsName').value;
+            const address = document.getElementById('settingsAddress').value;
+            const occupation = document.getElementById('settingsOccupation').value;
 
             try {
-                const res = await fetch('/api/payment/initialize', {
-                    method: 'POST',
+                const res = await fetch('/api/user/profile', {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ title, amount, currency })
+                    body: JSON.stringify({ fullName, address, occupation })
                 });
 
-                const data = await res.json();
-
                 if (res.ok) {
-                    const resultDiv = document.getElementById('linkResult');
-                    const urlInput = document.getElementById('generatedUrlInput');
-                    
-                    urlInput.value = data.checkoutUrl;
-                    resultDiv.classList.remove('d-none');
-                    createLinkForm.reset();
+                    alert('Settings updated successfully!');
+                    window.location.reload();
                 } else {
-                    alert(data.message || 'Failed to create payment link.');
+                    alert('Failed to update settings.');
                 }
             } catch (err) {
-                console.error('Error creating link:', err);
-                alert('An error occurred while creating the payment link.');
+                console.error('Error saving settings:', err);
             }
         });
     }
 });
 
-// Function to fetch and render payment link records
+// Load User Profile Data from Backend
+async function loadUserProfile(token) {
+    try {
+        const res = await fetch('/api/user/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const user = await res.json();
+
+        if (res.ok) {
+            if (document.getElementById('displayFullName')) {
+                document.getElementById('displayFullName').innerText = user.fullName || 'Luqman Abiodun Oyewole';
+                document.getElementById('settingsName').value = user.fullName || '';
+            }
+            if (document.getElementById('displayAddress')) {
+                document.getElementById('displayAddress').innerText = user.address || 'Not provided yet';
+                document.getElementById('settingsAddress').value = user.address || '';
+            }
+            if (document.getElementById('displayOccupation')) {
+                document.getElementById('displayOccupation').innerText = user.occupation || 'Not provided yet';
+                document.getElementById('settingsOccupation').value = user.occupation || '';
+            }
+        }
+    } catch (err) {
+        console.error('Error loading profile:', err);
+    }
+}
+
+// Fetch Payment Links
 async function fetchPaymentLinks(token) {
     const tableBody = document.getElementById('paymentLinksTableBody');
     if (!tableBody) return;
 
     try {
         const res = await fetch('/api/payment/my-links', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
-
         const data = await res.json();
 
         if (res.ok && data.links && data.links.length > 0) {
@@ -79,19 +132,8 @@ async function fetchPaymentLinks(token) {
                 `;
                 tableBody.innerHTML += row;
             });
-        } else {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">No payment links created yet. Click "+ Create Payment Link" to get started!</td>
-                </tr>
-            `;
         }
     } catch (err) {
-        console.error('Error fetching links:', err);
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="6" class="text-center py-4 text-danger">Failed to load payment link records. Please refresh.</td>
-            </tr>
-        `;
+        console.error('Error loading links:', err);
     }
 }

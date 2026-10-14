@@ -2,80 +2,83 @@ const router = require('express').Router();
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
 
-// REGISTER
-router.post(
-    '/register',
-    [
-        body('name').notEmpty().withMessage('Name is required.'),
-        body('email').isEmail().withMessage('Valid email is required.'),
-        body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters.'),
-        body('address').notEmpty().withMessage('Physical address is required.')
-    ],
-    async (req, res) => {
-        try {
-            const errors = validationResult(req);
-            if (!errors.isEmpty()) {
-                return res.status(400).json({ errors: errors.array().map(e => e.msg) });
-            }
+// 1. INITIATE SIGNUP (Generates 6-Digit Email OTP)
+router.post('/signup-initiate', async (req, res) => {
+    try {
+        const { fullName, email, password, phoneNumber, occupation } = req.body;
 
-            const { name, email, password, address } = req.body;
-
-            let user = await User.findOne({ email });
-            if (user) {
-                return res.status(400).json({ message: 'User already exists with this email.' });
-            }
-
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
-            user = new User({
-                name,
-                email,
-                password: hashedPassword,
-                address,
-                tier: 'Tier 1',
-                kycStatus: 'unverified',
-                wallets: { usd: 0, eur: 0, gbp: 0, ngn: 0 }
-            });
-
-            await user.save();
-
-            const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'akonniisecret', { expiresIn: '7d' });
-
-            res.status(201).json({
-                message: 'Account created successfully!',
-                token,
-                user: { id: user._id, name: user.name, email: user.email, address: user.address, kycStatus: user.kycStatus }
-            });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
+        if (!fullName || !email || !password || !phoneNumber || !occupation) {
+            return res.status(400).json({ message: 'All fields (Name, Email, Password, Phone, Occupation) are required.' });
         }
-    }
-);
 
-// LOGIN
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Account with this email already exists.' });
+        }
+
+        // Generate 6-digit OTP code
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        res.json({
+            message: 'OTP sent to email successfully for verification.',
+            otpCode, // Returned for verification workflow
+            tempUserData: { fullName, email, password, phoneNumber, occupation }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. COMPLETE SIGNUP AFTER OTP VERIFICATION
+router.post('/signup-verify', async (req, res) => {
+    try {
+        const { fullName, email, password, phoneNumber, occupation, userOtp, generatedOtp } = req.body;
+
+        if (userOtp !== generatedOtp) {
+            return res.status(400).json({ message: 'Invalid OTP verification code.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newUser = new User({
+            fullName,
+            email,
+            password: hashedPassword,
+            phoneNumber,
+            occupation,
+            isEmailVerified: true
+        });
+
+        await newUser.save();
+
+        const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET || 'secretKey', { expiresIn: '1d' });
+
+        res.json({
+            message: 'Registration and verification completed successfully!',
+            token,
+            user: { id: newUser._id, fullName: newUser.fullName, email: newUser.email }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. LOGIN
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+
         const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials.' });
-        }
+        if (!user) return res.status(400).json({ message: 'Invalid credentials.' });
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials.' });
-        }
+        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials.' });
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'akonniisecret', { expiresIn: '7d' });
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secretKey', { expiresIn: '1d' });
 
-        res.json({
-            message: 'Logged in successfully!',
-            token,
-            user: { id: user._id, name: user.name, email: user.email, address: user.address, kycStatus: user.kycStatus }
-        });
+        res.json({ token, user: { id: user._id, fullName: user.fullName, email: user.email } });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
