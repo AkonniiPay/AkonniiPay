@@ -3,40 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AkonniiPay - Sign Up</title>
+  <title>AkonniiPay - Register Merchant Account</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4 font-sans">
 
-  <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
-    <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-blue-500">AkonniiPay</h1>
-      <p class="text-gray-400 text-sm mt-1">Create your merchant account</p>
+  <div class="w-full max-w-md bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl space-y-6">
+    <div class="text-center space-y-2">
+      <h1 class="text-3xl font-black text-blue-500 tracking-wider">AkonniiPay</h1>
+      <p class="text-xs text-gray-400">Create your multi-currency fintech account</p>
     </div>
 
-    <div id="alertBox" class="hidden mb-4 p-3 text-sm rounded-lg"></div>
+    <form id="registerForm" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Full Name (as per ID)</label>
+        <input type="text" id="name" placeholder="Luqman Abiodun Oyewole" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Email Address</label>
+        <input type="email" id="email" placeholder="name@example.com" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Password</label>
+        <input type="password" id="password" placeholder="••••••••" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Residential Address</label>
+        <input type="text" id="address" placeholder="Enter your full street address & city" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+      </div>
 
-    <form id="signupForm" class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Full Name</label>
-        <input type="text" id="name" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition" placeholder="John Doe">
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
-        <input type="email" id="email" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition" placeholder="name@example.com">
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Password</label>
-        <input type="password" id="password" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition" placeholder="••••••••">
-      </div>
-      <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg shadow-lg transition">Create Account</button>
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 font-bold py-3.5 rounded-xl shadow-lg transition">Create Account</button>
     </form>
 
-    <p class="text-center text-sm text-gray-400 mt-6">
-      Already have an account? <a href="/login.html" class="text-blue-400 hover:underline">Sign In</a>
-    </p>
+    <div class="text-center text-xs text-gray-400">
+      Already have an account? <a href="/login.html" class="text-blue-400 font-semibold hover:underline">Sign In</a>
+    </div>
   </div>
 
-  <script src="/js/auth.js"></script>
+  <script>
+    const API_URL = window.location.origin;
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const address = document.getElementById('address').value;
+
+      try {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, address })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Registration failed');
+
+        localStorage.setItem('token', data.token);
+        alert(data.message);
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  </script>
 </body>
 </html>

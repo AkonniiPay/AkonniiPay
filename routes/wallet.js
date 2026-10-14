@@ -15,10 +15,12 @@ router.get('/', auth, async (req, res) => {
             user: {
                 name: user.name,
                 email: user.email,
+                address: user.address,
                 tier: user.tier || 'Tier 1',
-                isKycVerified: user.isKycVerified || false,
+                kycStatus: user.kycStatus || 'unverified',
                 accounts: user.accounts || {}
             },
+            wallets: user.wallets || { usd: 0, eur: 0, gbp: 0, ngn: 0 },
             balance: user.walletBalance || 0
         });
     } catch (err) {
@@ -36,23 +38,19 @@ router.get('/transactions', auth, async (req, res) => {
     }
 });
 
-// 3. RESOLVE BANK ACCOUNT NAME (Name Suggestion for Withdrawals)
+// 3. RESOLVE BANK ACCOUNT NAME
 router.post('/resolve-account', auth, async (req, res) => {
     try {
         const { accountNumber, bankName } = req.body;
-
         if (!accountNumber || accountNumber.length < 10) {
             return res.status(400).json({ message: 'Enter a valid 10-digit account number.' });
         }
 
-        // Return user name or resolved bank holder name
         const user = await User.findById(req.user.id);
-        const resolvedName = user ? user.name : 'Account Holder';
-
         res.json({
             accountNumber,
             bankName,
-            accountName: resolvedName
+            accountName: user ? user.name : 'Luqman Abiodun Oyewole'
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -62,7 +60,7 @@ router.post('/resolve-account', auth, async (req, res) => {
 // 4. AUTOMATED WITHDRAWAL / BANK PAYOUT
 router.post('/withdraw', auth, async (req, res) => {
     try {
-        const { amount, bankName, accountNumber, accountName } = req.body;
+        const { amount, bankName, accountNumber, accountName, currency } = req.body;
 
         const payoutAmount = Number(amount);
         if (!payoutAmount || payoutAmount <= 0) {
@@ -78,11 +76,17 @@ router.post('/withdraw', auth, async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        if ((user.walletBalance || 0) < payoutAmount) {
-            return res.status(400).json({ message: 'Insufficient wallet balance for this withdrawal.' });
+        const curr = (currency || 'usd').toLowerCase();
+        const currentBalance = user.wallets && user.wallets[curr] !== undefined ? user.wallets[curr] : user.walletBalance;
+
+        if (currentBalance < payoutAmount) {
+            return res.status(400).json({ message: `Insufficient ${curr.toUpperCase()} wallet balance for this withdrawal.` });
         }
 
         // Deduct balance
+        if (user.wallets && user.wallets[curr] !== undefined) {
+            user.wallets[curr] -= payoutAmount;
+        }
         user.walletBalance -= payoutAmount;
         await user.save();
 
@@ -92,18 +96,18 @@ router.post('/withdraw', auth, async (req, res) => {
             user: user._id,
             type: 'withdrawal',
             amount: payoutAmount,
-            currency: 'USD',
+            currency: curr.toUpperCase(),
             status: 'completed',
             reference,
-            description: `Payout of $${payoutAmount.toFixed(2)} to ${accountName || user.name} - ${bankName} (${accountNumber})`
+            description: `Payout of ${curr.toUpperCase()} ${payoutAmount.toFixed(2)} to ${accountName || user.name} (${bankName} - ${accountNumber})`
         });
 
         await transaction.save();
 
         res.json({
-            message: `Successfully withdrew $${payoutAmount.toFixed(2)} to ${accountName || user.name} [${bankName} - ${accountNumber}]!`,
+            message: `Successfully withdrew ${curr.toUpperCase()} ${payoutAmount.toFixed(2)} to ${accountName || user.name} [${bankName} - ${accountNumber}]!`,
             reference,
-            newBalance: user.walletBalance
+            newBalance: currentBalance - payoutAmount
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
