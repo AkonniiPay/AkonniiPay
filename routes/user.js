@@ -15,7 +15,7 @@ router.get('/profile', auth, async (req, res) => {
     }
 });
 
-// UPDATE PROFILE (Name, Address, Profile Details)
+// UPDATE PROFILE (Name, Address)
 router.put('/profile', auth, async (req, res) => {
     try {
         const { name, address } = req.body;
