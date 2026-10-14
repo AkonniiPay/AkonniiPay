@@ -8,7 +8,7 @@ dotenv.config();
 
 const app = express();
 
-// 1. TRUST PROXY (Required for Express v5 + Render + express-rate-limit)
+// 1. TRUST PROXY
 app.set('trust proxy', 1);
 
 // 2. MIDDLEWARE
@@ -32,9 +32,25 @@ app.use('/api/payment', require('./routes/payment'));
 app.use('/api/webhook', require('./routes/webhook'));
 app.use('/api/user', require('./routes/user'));
 
-// 5. EXPRESS v5 SAFE FALLBACK ROUTE
-// Express v5 strict path syntax: uses (.*) regex pattern instead of wildcard string
-app.get('(.*)', (req, res) => {
+// 5. STATIC FRONTEND ROUTING (Safe for Express v5)
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/signup', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'signup.html'));
+});
+
+app.get('/checkout', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'checkout.html'));
+});
+
+// Root fallback
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
