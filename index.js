@@ -42,6 +42,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/payment', require('./routes/payment'));
+app.use('/api/kyc', require('./routes/kyc'));
 
 // Base Route
 app.get('/', (req, res) => {

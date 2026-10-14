@@ -3,6 +3,30 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const auth = require('../middleware/auth');
 
+// 0. GET WALLET & USER PROFILE (Fixes the login/dashboard redirect loop)
+router.get('/', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                tier: user.tier || 'Tier 1',
+                isEmailVerified: user.isEmailVerified || false,
+                isKycVerified: user.isKycVerified || false
+            },
+            balance: user.walletBalance || 0
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // 1. DEPOSIT: Manual Top-Up
 router.post('/deposit', auth, async (req, res) => {
     try {
@@ -19,7 +43,7 @@ router.post('/deposit', auth, async (req, res) => {
 
         const reference = 'AKP_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
-        user.walletBalance += Number(amount);
+        user.walletBalance = (user.walletBalance || 0) + Number(amount);
         await user.save();
 
         const transaction = new Transaction({
@@ -43,7 +67,7 @@ router.post('/deposit', auth, async (req, res) => {
     }
 });
 
-// 2. WITHDRAWAL / PAYOUT
+// 2. WITHDRAWAL / PAYOUT (Enforces Tier check for security)
 router.post('/withdraw', auth, async (req, res) => {
     try {
         const { amount, bankName, accountNumber, accountName } = req.body;
@@ -57,9 +81,14 @@ router.post('/withdraw', auth, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        if (user.walletBalance < Number(amount)) {
+        // Check if user is KYC verified for payouts
+        if (!user.isKycVerified) {
+            return res.status(403).json({ message: 'Please complete your BVN/NIN verification (KYC) before making bank withdrawals.' });
+        }
+
+        if ((user.walletBalance || 0) < Number(amount)) {
             return res.status(400).json({ 
-                message: `Insufficient balance. Available balance: $${user.walletBalance}` 
+                message: `Insufficient balance. Available balance: $${user.walletBalance || 0}` 
             });
         }
 
