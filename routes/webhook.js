@@ -8,8 +8,8 @@ const PaymentLink = require('../models/PaymentLink');
 // POST /api/webhook/paystack
 router.post('/paystack', async (req, res) => {
     try {
-        // Validate Webhook Signature
-        const secret = process.env.PAYSTACK_SECRET_KEY || 'sk_test_sample_secret';
+        // Your Paystack Test Secret Key
+        const secret = process.env.PAYSTACK_SECRET_KEY || 'sk_test_75d8c4ccc9592e41d1cc86c23b648f283dd16228';
         const hash = crypto.createHmac('sha512', secret).update(JSON.stringify(req.body)).digest('hex');
 
         if (hash !== req.headers['x-paystack-signature']) {
@@ -18,15 +18,13 @@ router.post('/paystack', async (req, res) => {
 
         const event = req.body;
 
-        // Process successful charge event
         if (event.event === 'charge.success') {
             const data = event.data;
             const reference = data.reference;
-            const amountPaid = data.amount / 100; // Convert subunits back to main unit
+            const amountPaid = data.amount / 100;
             const currency = data.currency;
             const metadata = data.metadata || {};
 
-            // Prevent duplicate transaction processing
             const existingTx = await Transaction.findOne({ reference });
             if (existingTx) {
                 return res.status(200).send('Event already processed');
@@ -39,16 +37,13 @@ router.post('/paystack', async (req, res) => {
             }
 
             if (merchant) {
-                // Credit merchant wallet
                 merchant.walletBalance = (merchant.walletBalance || 0) + amountPaid;
                 await merchant.save();
 
-                // Increment Payment Link usage if applicable
                 if (metadata.linkId) {
                     await PaymentLink.findByIdAndUpdate(metadata.linkId, { $inc: { paidCount: 1 } });
                 }
 
-                // Record transaction
                 const transaction = new Transaction({
                     user: merchant._id,
                     type: 'deposit',

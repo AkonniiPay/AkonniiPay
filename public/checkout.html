@@ -106,12 +106,11 @@
 
       if (!linkData) return alert('Payment data not loaded.');
 
-      // Convert amount to kobo (Paystack requires amount in lowest currency unit)
       const amountInSubunits = Math.round(Number(linkData.amount) * 100);
       const reference = 'AKP_PAY_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
-      // Initialize Paystack Popup
-      const paystackKey = 'pk_test_sample_key'; // Replace with process.env / public key in production
+      // Your Paystack Test Public Key
+      const paystackKey = 'pk_test_f072c4b9ce7cdc851f1c6cad46e84620e66a7252';
 
       if (typeof PaystackPop !== 'undefined') {
         const handler = PaystackPop.setup({
@@ -126,7 +125,6 @@
             merchantId: linkData.merchantId
           },
           callback: function(response) {
-            // Verify transaction on backend
             verifyPaymentOnBackend(response.reference, guestName, guestEmail);
           },
           onClose: function() {
@@ -135,7 +133,6 @@
         });
         handler.openIframe();
       } else {
-        // Direct simulation fallback if script is blocked
         verifyPaymentOnBackend(reference, guestName, guestEmail);
       }
     });
