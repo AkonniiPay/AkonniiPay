@@ -1,119 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AkonniiPay Checkout</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AkonniiPay - Secure Guest Checkout</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
-  <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-gray-700">
-    <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold text-emerald-400">AkonniiPay</h1>
-      <p class="text-gray-400 text-sm mt-1" id="recipient-info">Loading payment details...</p>
+<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4 font-sans">
+
+  <div class="w-full max-w-lg bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl space-y-6">
+    
+    <!-- Header -->
+    <div class="text-center space-y-1">
+      <h1 class="text-2xl font-black text-blue-500 tracking-wider">AkonniiPay</h1>
+      <p id="recipientLabel" class="text-xs text-gray-400">Secure Payment Gateway</p>
     </div>
 
-    <div class="bg-gray-900 p-4 rounded-xl mb-6 border border-gray-700">
-      <h2 id="link-title" class="font-semibold text-lg text-gray-200">Payment Request</h2>
-      <p id="link-desc" class="text-gray-400 text-sm mb-3"></p>
-      <div class="text-3xl font-bold text-white" id="amount-display">$0.00</div>
-    </div>
-
-    <form id="checkout-form" class="space-y-4">
-      <div id="custom-amount-group" class="hidden">
-        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Custom Amount</label>
-        <input type="number" id="customAmount" placeholder="Enter amount" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500" />
+    <!-- Payment Request Summary Card -->
+    <div class="bg-gray-800/80 border border-gray-700/60 p-6 rounded-2xl space-y-2">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment Request</p>
+      <h2 id="checkoutTitle" class="text-xl font-bold text-white">Loading payment details...</h2>
+      <p id="checkoutDescription" class="text-xs text-gray-300"></p>
+      <div class="pt-2 flex justify-between items-center border-t border-gray-700 mt-4">
+        <span class="text-xs text-gray-400">Total Amount</span>
+        <span id="checkoutAmount" class="text-3xl font-extrabold text-green-400">$0.00</span>
       </div>
+    </div>
 
+    <!-- Payment Form -->
+    <form id="checkoutForm" class="space-y-4">
       <div>
         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Your Name</label>
-        <input type="text" id="guestName" placeholder="Michael Scott" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500" />
+        <input type="text" id="guestName" placeholder="Enter your full name" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
       </div>
 
       <div>
         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Your Email</label>
-        <input type="email" id="guestEmail" placeholder="michael@dundermifflin.com" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500" />
+        <input type="email" id="guestEmail" placeholder="Enter your email address" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
       </div>
 
       <div>
         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Payment Method</label>
-        <select id="paymentMethod" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500">
+        <select id="paymentMethod" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
           <option value="card">Credit / Debit Card</option>
           <option value="paypal">PayPal</option>
-          <option value="wise">Wise Transfer</option>
-          <option value="bank_wire">Bank Wire</option>
+          <option value="wise">Wise</option>
+          <option value="bank_wire">Bank Wire Transfer</option>
         </select>
       </div>
 
-      <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 font-bold py-3 rounded-lg transition duration-200 shadow-lg mt-2">
+      <button type="submit" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
         Complete Payment
       </button>
     </form>
 
-    <div id="status-message" class="mt-4 text-center text-sm"></div>
+    <div class="text-center">
+      <span class="text-xs text-gray-500">🔒 Protected by AkonniiPay Secure Escrow & Encryption</span>
+    </div>
   </div>
 
   <script>
+    const API_URL = window.location.origin;
     const urlParams = new URLSearchParams(window.location.search);
-    const slug = urlParams.get('slug');
+    const linkIdentifier = urlParams.get('id') || urlParams.get('slug');
 
-    async function loadLinkData() {
-      if (!slug) return;
+    async function loadCheckoutDetails() {
+      if (!linkIdentifier) {
+        document.body.innerHTML = `<div class="text-center p-8 text-red-400 font-bold">Invalid or missing payment link URL.</div>`;
+        return;
+      }
+
       try {
-        const res = await fetch(`/api/payment/checkout/${slug}`);
+        const res = await fetch(`${API_URL}/api/payment/checkout/${linkIdentifier}`);
         const data = await res.json();
-        
-        document.getElementById('link-title').innerText = data.title;
-        document.getElementById('link-desc').innerText = data.description || '';
-        document.getElementById('recipient-info').innerText = `Pay to ${data.recipientName}`;
-        
-        if (data.amount > 0) {
-          document.getElementById('amount-display').innerText = `${data.currency} ${data.amount.toFixed(2)}`;
-        } else {
-          document.getElementById('amount-display').innerText = 'Open Custom Amount';
-          document.getElementById('custom-amount-group').classList.remove('hidden');
+
+        if (!res.ok) {
+          document.body.innerHTML = `
+            <div class="max-w-md mx-auto mt-20 text-center p-8 bg-gray-900 border border-gray-800 rounded-2xl">
+              <h2 class="text-2xl font-bold text-red-400">Link Unavailable</h2>
+              <p class="text-gray-400 mt-2">${data.message || 'This payment link has expired or does not exist.'}</p>
+            </div>
+          `;
+          return;
         }
+
+        document.getElementById('checkoutTitle').innerText = data.title;
+        document.getElementById('checkoutDescription').innerText = data.description || '';
+        
+        const symbol = data.currency === 'NGN' ? '₦' : data.currency === 'EUR' ? '€' : data.currency === 'GBP' ? '£' : '$';
+        document.getElementById('checkoutAmount').innerText = `${symbol}${Number(data.amount).toFixed(2)}`;
+        document.getElementById('recipientLabel').innerText = `Paid to ${data.recipientName || 'Merchant'}`;
+
       } catch (err) {
-        console.error(err);
+        console.error('Error loading checkout:', err);
       }
     }
 
-    document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+    document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const status = document.getElementById('status-message');
-      status.innerText = 'Processing payment...';
-      status.className = 'mt-4 text-center text-sm text-yellow-400';
-
-      const bodyData = {
-        paymentMethod: document.getElementById('paymentMethod').value,
-        guestName: document.getElementById('guestName').value,
-        guestEmail: document.getElementById('guestEmail').value,
-        customAmount: document.getElementById('customAmount').value || undefined
-      };
+      const guestName = document.getElementById('guestName').value;
+      const guestEmail = document.getElementById('guestEmail').value;
+      const paymentMethod = document.getElementById('paymentMethod').value;
 
       try {
-        const res = await fetch(`/api/payment/checkout/${slug}/pay`, {
+        const res = await fetch(`${API_URL}/api/payment/checkout/${linkIdentifier}/pay`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyData)
+          body: JSON.stringify({ guestName, guestEmail, paymentMethod })
         });
-
         const data = await res.json();
 
-        if (res.ok) {
-          status.innerText = `✅ ${data.message}`;
-          status.className = 'mt-4 text-center text-sm text-emerald-400 font-semibold';
-        } else {
-          status.innerText = `❌ ${data.message || 'Payment failed.'}`;
-          status.className = 'mt-4 text-center text-sm text-red-400';
-        }
+        if (!res.ok) throw new Error(data.message || 'Payment processing failed');
+
+        alert(data.message);
+        window.location.reload();
       } catch (err) {
-        status.innerText = '❌ Network error processing payment.';
-        status.className = 'mt-4 text-center text-sm text-red-400';
+        alert(err.message);
       }
     });
 
-    loadLinkData();
+    loadCheckoutDetails();
   </script>
 </body>
 </html>
