@@ -3,22 +3,23 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const auth = require('../middleware/auth');
 
-// 0. GET WALLET & USER PROFILE (Fixes the login/dashboard redirect loop)
+// -------------------------------------------------------------
+// 1. GET USER WALLET & ACCOUNT DETAILS
+// -------------------------------------------------------------
 router.get('/', auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'User not found.' });
         }
 
         res.json({
             user: {
-                id: user._id,
                 name: user.name,
                 email: user.email,
                 tier: user.tier || 'Tier 1',
-                isEmailVerified: user.isEmailVerified || false,
-                isKycVerified: user.isKycVerified || false
+                isKycVerified: user.isKycVerified || false,
+                accounts: user.accounts || {}
             },
             balance: user.walletBalance || 0
         });
@@ -27,109 +28,67 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
-// 1. DEPOSIT: Manual Top-Up
-router.post('/deposit', auth, async (req, res) => {
-    try {
-        const { amount } = req.body;
-
-        if (!amount || amount <= 0) {
-            return res.status(400).json({ message: 'Please enter a valid deposit amount.' });
-        }
-
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const reference = 'AKP_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-
-        user.walletBalance = (user.walletBalance || 0) + Number(amount);
-        await user.save();
-
-        const transaction = new Transaction({
-            user: user._id,
-            type: 'deposit',
-            amount: Number(amount),
-            status: 'completed',
-            reference,
-            description: 'Wallet top-up'
-        });
-
-        await transaction.save();
-
-        res.json({
-            message: 'Deposit successful!',
-            newBalance: user.walletBalance,
-            transaction
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 2. WITHDRAWAL / PAYOUT (Enforces Tier check for security)
-router.post('/withdraw', auth, async (req, res) => {
-    try {
-        const { amount, bankName, accountNumber, accountName } = req.body;
-
-        if (!amount || Number(amount) <= 0) {
-            return res.status(400).json({ message: 'Please enter a valid withdrawal amount.' });
-        }
-
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Check if user is KYC verified for payouts
-        if (!user.isKycVerified) {
-            return res.status(403).json({ message: 'Please complete your BVN/NIN verification (KYC) before making bank withdrawals.' });
-        }
-
-        if ((user.walletBalance || 0) < Number(amount)) {
-            return res.status(400).json({ 
-                message: `Insufficient balance. Available balance: $${user.walletBalance || 0}` 
-            });
-        }
-
-        const reference = 'WTH_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-
-        user.walletBalance -= Number(amount);
-        await user.save();
-
-        const transaction = new Transaction({
-            user: user._id,
-            type: 'withdrawal',
-            amount: Number(amount),
-            status: 'completed',
-            reference,
-            description: `Payout to ${bankName || 'Bank'} (${accountNumber || 'N/A'}) - ${accountName || user.name}`
-        });
-
-        await transaction.save();
-
-        res.json({
-            message: 'Payout processed successfully!',
-            remainingBalance: user.walletBalance,
-            payoutDetails: {
-                reference,
-                amountWithdrawn: Number(amount),
-                destination: { bankName, accountNumber, accountName },
-                date: new Date()
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 3. TRANSACTIONS HISTORY
+// -------------------------------------------------------------
+// 2. GET TRANSACTION HISTORY
+// -------------------------------------------------------------
 router.get('/transactions', auth, async (req, res) => {
     try {
         const transactions = await Transaction.find({ user: req.user.id }).sort({ createdAt: -1 });
+        res.json({ count: transactions.length, transactions });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// -------------------------------------------------------------
+// 3. AUTOMATED WITHDRAWAL / BANK PAYOUT
+// -------------------------------------------------------------
+router.post('/withdraw', auth, async (req, res) => {
+    try {
+        const { amount, bankName, accountNumber } = req.body;
+
+        const payoutAmount = Number(amount);
+        if (!payoutAmount || payoutAmount <= 0) {
+            return res.status(400).json({ message: 'Please enter a valid withdrawal amount.' });
+        }
+
+        if (!bankName || !accountNumber) {
+            return res.status(400).json({ message: 'Bank name and account number are required.' });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        // Check if merchant has sufficient balance
+        if ((user.walletBalance || 0) < payoutAmount) {
+            return res.status(400).json({ message: 'Insufficient wallet balance for this withdrawal.' });
+        }
+
+        // Deduct balance
+        user.walletBalance -= payoutAmount;
+        await user.save();
+
+        const reference = 'WD_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+        // Record withdrawal transaction
+        const transaction = new Transaction({
+            user: user._id,
+            type: 'withdrawal',
+            amount: payoutAmount,
+            currency: 'USD',
+            status: 'completed',
+            reference,
+            description: `Payout of $${payoutAmount.toFixed(2)} to ${bankName} (${accountNumber})`
+        });
+
+        await transaction.save();
+
         res.json({
-            count: transactions.length,
-            transactions
+            message: `Successfully withdrew $${payoutAmount.toFixed(2)} to ${bankName} (${accountNumber})!`,
+            reference,
+            newBalance: user.walletBalance
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
