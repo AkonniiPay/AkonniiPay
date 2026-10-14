@@ -1,25 +1,18 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    address: { type: String, required: true }, // Physical address required for compliance
-    tier: { type: String, default: 'Tier 1' },
-    kycStatus: { type: String, enum: ['unverified', 'pending', 'verified'], default: 'unverified' },
-    bvn: { type: String },
-    nin: { type: String },
-    walletBalance: { type: Number, default: 0 }, // Legacy USD primary
-    wallets: {
-        usd: { type: Number, default: 0 },
-        eur: { type: Number, default: 0 },
-        gbp: { type: Number, default: 0 },
-        ngn: { type: Number, default: 0 }
-    },
-    accounts: {
-        type: Object,
-        default: {}
-    }
-}, { timestamps: true });
+    phoneNumber: { type: String, required: true },
+    occupation: { type: String, required: true },
+    address: { type: String, default: '' },
+    bvn: { type: String, default: '' },
+    nin: { type: String, default: '' },
+    kycStatus: { type: String, default: 'Pending Verification' },
+    ngnBalance: { type: Number, default: 0 },
+    usdBalance: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now }
+});
 
 module.exports = mongoose.model('User', UserSchema);

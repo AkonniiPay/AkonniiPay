@@ -2,19 +2,16 @@ const router = require('express').Router();
 const https = require('https');
 const auth = require('../middleware/auth');
 const PaymentLink = require('../models/PaymentLink');
+const Transaction = require('../models/Transaction');
+const User = require('../models/User');
 
-// Helper function to make HTTP requests safely
 const makeHttpRequest = (options, postData) => {
     return new Promise((resolve, reject) => {
         const req = https.request(options, (res) => {
             let data = '';
             res.on('data', (chunk) => data += chunk);
             res.on('end', () => {
-                try {
-                    resolve(JSON.parse(data));
-                } catch (e) {
-                    reject(e);
-                }
+                try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
             });
         });
         req.on('error', (err) => reject(err));
@@ -23,11 +20,10 @@ const makeHttpRequest = (options, postData) => {
     });
 };
 
-// 1. SAVE AND INITIALIZE PAYMENT LINK
+// 1. INITIALIZE PAYMENT LINK
 router.post('/initialize', auth, async (req, res) => {
     try {
         const { amount, currency, title } = req.body;
-
         if (!amount || !currency || !title) {
             return res.status(400).json({ message: 'Amount, currency, and title are required.' });
         }
@@ -36,13 +32,14 @@ router.post('/initialize', auth, async (req, res) => {
         let checkoutUrl = '';
         let reference = '';
 
-        // ROUTE TO PAYSTACK FOR NAIRA (NGN)
         if (formattedCurrency === 'NGN') {
+            reference = `AKP_NGN_${Date.now()}`;
             const postData = JSON.stringify({
-                email: req.user.email || 'guest@akonniipay.com',
+                email: req.user.email,
                 amount: Math.round(amount * 100),
                 currency: 'NGN',
-                metadata: { title }
+                reference,
+                metadata: { title, userId: req.user.id }
             });
 
             const options = {
@@ -58,26 +55,18 @@ router.post('/initialize', auth, async (req, res) => {
             };
 
             const response = await makeHttpRequest(options, postData);
-            if (!response.status) {
-                return res.status(400).json({ message: response.message || 'Paystack initialization failed.' });
-            }
+            if (!response.status) return res.status(400).json({ message: response.message });
 
             checkoutUrl = response.data.authorization_url;
-            reference = response.data.reference;
-        } 
-        // ROUTE TO FLUTTERWAVE FOR INTERNATIONAL (USD, GBP, EUR, CAD, GHS)
-        else {
-            reference = `AKP_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        } else {
+            reference = `AKP_FLW_${Date.now()}`;
             const postData = JSON.stringify({
                 tx_ref: reference,
                 amount,
                 currency: formattedCurrency,
                 redirect_url: 'https://akonniipay.onrender.com/dashboard',
-                customer: { email: req.user.email || 'guest@akonniipay.com' },
-                customizations: {
-                    title: title || 'AkonniiPay Checkout',
-                    description: 'Direct Client Payment'
-                }
+                customer: { email: req.user.email },
+                customizations: { title, description: 'AkonniiPay Checkout' }
             });
 
             const options = {
@@ -93,14 +82,11 @@ router.post('/initialize', auth, async (req, res) => {
             };
 
             const response = await makeHttpRequest(options, postData);
-            if (response.status !== 'success') {
-                return res.status(400).json({ message: response.message || 'Flutterwave initialization failed.' });
-            }
+            if (response.status !== 'success') return res.status(400).json({ message: response.message });
 
             checkoutUrl = response.data.link;
         }
 
-        // SAVE LINK RECORD TO MONGODB
         const newLink = new PaymentLink({
             userId: req.user.id,
             title,
@@ -110,24 +96,91 @@ router.post('/initialize', auth, async (req, res) => {
         });
 
         await newLink.save();
-
-        res.json({
-            message: 'Payment link created and saved successfully!',
-            checkoutUrl,
-            reference,
-            link: newLink
-        });
-
+        res.json({ message: 'Payment link created successfully!', checkoutUrl, reference });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// 2. GET ALL PAYMENT LINKS FOR LOGGED-IN MERCHANT
+// 2. VERIFY TRANSACTION AND CREDIT WALLET BALANCE
+router.post('/verify', auth, async (req, res) => {
+    try {
+        const { reference } = req.body;
+        if (!reference) return res.status(400).json({ message: 'Reference is required.' });
+
+        // Check if transaction was already recorded
+        const existingTx = await Transaction.findOne({ reference });
+        if (existingTx) {
+            return res.json({ message: 'Transaction already verified and credited!', transaction: existingTx });
+        }
+
+        let amountCredited = 0;
+        let currencyUsed = 'NGN';
+
+        // Verify with Paystack if NGN reference
+        if (reference.startsWith('AKP_NGN')) {
+            const options = {
+                hostname: 'api.paystack.co',
+                port: 443,
+                path: `/transaction/verify/${reference}`,
+                method: 'GET',
+                headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` }
+            };
+
+            const response = await makeHttpRequest(options);
+            if (!response.status || response.data.status !== 'success') {
+                return res.status(400).json({ message: 'Transaction not successful on Paystack yet.' });
+            }
+
+            amountCredited = response.data.amount / 100;
+            currencyUsed = response.data.currency;
+        } else {
+            return res.status(400).json({ message: 'Invalid transaction reference format.' });
+        }
+
+        // Save Transaction Record
+        const newTx = new Transaction({
+            userId: req.user.id,
+            reference,
+            amount: amountCredited,
+            currency: currencyUsed,
+            gateway: 'Paystack',
+            status: 'Success',
+            title: 'Direct Payment'
+        });
+        await newTx.save();
+
+        // Credit User Wallet Balance
+        const user = await User.findById(req.user.id);
+        if (currencyUsed === 'NGN') {
+            user.ngnBalance += amountCredited;
+        } else {
+            user.usdBalance += amountCredited;
+        }
+        await user.save();
+
+        res.json({ message: 'Wallet credited successfully!', newBalance: user.ngnBalance, transaction: newTx });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. GET MERCHANT LINKS & WALLET BALANCES
 router.get('/my-links', auth, async (req, res) => {
     try {
         const links = await PaymentLink.find({ userId: req.user.id }).sort({ createdAt: -1 });
-        res.json({ links });
+        const user = await User.findById(req.user.id).select('ngnBalance usdBalance');
+        res.json({ links, ngnBalance: user.ngnBalance, usdBalance: user.usdBalance });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. GET ALL TRANSACTIONS
+router.get('/transactions', auth, async (req, res) => {
+    try {
+        const transactions = await Transaction.find({ userId: req.user.id }).sort({ createdAt: -1 });
+        res.json({ transactions });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
