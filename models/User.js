@@ -13,7 +13,7 @@ const UserSchema = new mongoose.Schema({
     nin: { type: String, default: null },
     isKycVerified: { type: Boolean, default: false },
 
-    // Multi-Currency Dedicated Virtual Accounts
+    // Dedicated Virtual Accounts
     accounts: {
         usd: {
             bankName: { type: String, default: 'Community Federal Savings Bank' },

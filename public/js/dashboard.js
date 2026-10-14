@@ -29,7 +29,7 @@ function toggleLinksView() {
   if (section) section.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Load Dashboard Data & Balances
+// Load Dashboard Data, Balances, & Dedicated Accounts
 async function loadDashboard() {
   try {
     const res = await fetch(`${API_URL}/api/wallet`, {
@@ -47,11 +47,34 @@ async function loadDashboard() {
     document.getElementById('gbpBalance').innerText = `£${(balance * 0.79).toFixed(2)}`;
     document.getElementById('ngnBalance').innerText = `₦${(balance * 1450).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
+    // Handle Virtual Accounts Display
+    if (data.user.accounts && data.user.accounts.usd?.accountNumber) {
+      const acc = data.user.accounts;
+      document.getElementById('usdAccountInfo').innerHTML = `
+        <p class="text-gray-300 font-semibold">${acc.usd.bankName}</p>
+        <p class="font-mono text-green-300">Acc: ${acc.usd.accountNumber}</p>
+        <p class="text-gray-400">Routing: ${acc.usd.routingNumber}</p>
+      `;
+      document.getElementById('eurAccountInfo').innerHTML = `
+        <p class="text-gray-300 font-semibold">${acc.eur.bankName}</p>
+        <p class="font-mono text-blue-300">IBAN: ${acc.eur.iban}</p>
+      `;
+      document.getElementById('gbpAccountInfo').innerHTML = `
+        <p class="text-gray-300 font-semibold">${acc.gbp.bankName}</p>
+        <p class="font-mono text-purple-300">Acc: ${acc.gbp.accountNumber}</p>
+        <p class="text-gray-400">Sort Code: ${acc.gbp.sortCode}</p>
+      `;
+      document.getElementById('ngnAccountInfo').innerHTML = `
+        <p class="text-gray-300 font-semibold">${acc.ngn.bankName}</p>
+        <p class="font-mono text-amber-300">Acc: ${acc.ngn.accountNumber}</p>
+      `;
+    }
+
     if (data.user.isKycVerified) {
       document.getElementById('kycBanner').innerHTML = `
         <div>
           <p class="font-bold text-green-400 flex items-center gap-2">✅ Verification Center: Verified (${data.user.tier || 'Tier 2'})</p>
-          <p class="text-xs text-green-200/70 mt-0.5">Your identity is confirmed. Full withdrawal privileges are unlocked.</p>
+          <p class="text-xs text-green-200/70 mt-0.5">Your identity is confirmed. Dedicated virtual bank accounts generated.</p>
         </div>
       `;
       document.getElementById('kycBanner').className = "bg-green-950/40 border border-green-700/50 p-4 rounded-2xl flex items-center justify-between";
@@ -139,7 +162,7 @@ async function loadMyPaymentLinks() {
   }
 }
 
-// Create Payment Link Form Handler (Sends Expiration Data)
+// Create Payment Link Form Handler
 const createLinkForm = document.getElementById('createLinkForm');
 if (createLinkForm) {
   createLinkForm.addEventListener('submit', async (e) => {
@@ -178,7 +201,6 @@ if (createLinkForm) {
       document.getElementById('generatedUrl').innerText = checkoutUrl;
       document.getElementById('generatedLinkBox').classList.remove('hidden');
 
-      // Refresh table immediately
       loadMyPaymentLinks();
     } catch (err) {
       alert(err.message);
@@ -192,7 +214,7 @@ document.getElementById('copyBtn').addEventListener('click', () => {
   alert('Payment link copied to clipboard!');
 });
 
-// KYC Verification
+// KYC Verification Submission
 document.getElementById('kycForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const bvn = document.getElementById('bvnInput').value;
