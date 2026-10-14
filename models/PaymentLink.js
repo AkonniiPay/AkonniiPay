@@ -1,37 +1,16 @@
 const mongoose = require('mongoose');
 
-const paymentLinkSchema = new mongoose.Schema({
-    merchant: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    title: {
-        type: String,
-        required: true
-    },
-    amount: {
-        type: Number,
-        default: 0
-    },
-    currency: {
-        type: String,
-        default: 'USD',
-        enum: ['USD', 'EUR', 'GBP', 'NGN']
-    },
-    description: {
-        type: String,
-        default: ''
-    },
-    slug: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    isActive: {
-        type: Boolean,
-        default: true
-    }
-}, { timestamps: true });
+const PaymentLinkSchema = new mongoose.Schema({
+  merchant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title: { type: String, required: true },
+  amount: { type: Number, required: true },
+  currency: { type: String, default: 'USD' },
+  description: { type: String, default: '' },
+  slug: { type: String, required: true, unique: true },
+  isActive: { type: Boolean, default: true },
+  expiresAt: { type: Date, default: null }, // Null means never expires
+  paidCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
 
-module.exports = mongoose.model('PaymentLink', paymentLinkSchema);
+module.exports = mongoose.model('PaymentLink', PaymentLinkSchema);

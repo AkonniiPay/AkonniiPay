@@ -52,32 +52,32 @@
         <button onclick="openKycModal()" class="bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-lg">SUBMIT NOW</button>
       </div>
 
-      <!-- Multi-Currency Balances (Payoneer Style) -->
+      <!-- Multi-Currency Balances -->
       <div>
         <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Multi-Currency Balances</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl">
             <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">USD Wallet</span> 🇺🇸</div>
             <h3 id="usdBalance" class="text-2xl font-extrabold text-green-400 mt-2">$0.00</h3>
           </div>
-          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl">
             <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">EUR Wallet</span> 🇪🇺</div>
             <h3 id="eurBalance" class="text-2xl font-extrabold text-blue-400 mt-2">€0.00</h3>
           </div>
-          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl">
             <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">GBP Wallet</span> 🇬🇧</div>
             <h3 id="gbpBalance" class="text-2xl font-extrabold text-purple-400 mt-2">£0.00</h3>
           </div>
-          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl">
             <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">NGN Wallet</span> 🇳🇬</div>
             <h3 id="ngnBalance" class="text-2xl font-extrabold text-amber-400 mt-2">₦0.00</h3>
           </div>
         </div>
       </div>
 
-      <!-- Action Cards (Clickable Metrics) -->
+      <!-- Action Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div onclick="openWithdrawModal()" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl cursor-pointer hover:bg-gray-850 hover:border-green-500/50 transition group shadow-xl">
+        <div onclick="openWithdrawModal()" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl cursor-pointer hover:border-green-500/50 transition group shadow-xl">
           <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider group-hover:text-green-400 transition">Available Balance (Click to Withdraw)</p>
           <h2 id="walletBalance" class="text-3xl font-extrabold text-green-400 mt-2">$0.00</h2>
           <span class="text-xs text-blue-400 mt-3 inline-block">Withdraw or convert funds →</span>
@@ -94,18 +94,45 @@
         </div>
       </div>
 
-      <!-- Payment Link Generator Section -->
+      <!-- Payment Link Generator Section (With Expiration Selector) -->
       <div id="linkSection" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl">
         <h3 class="text-lg font-bold mb-4">Generate Direct Client Payment Link</h3>
-        <form id="createLinkForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form id="createLinkForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <input type="text" id="linkTitle" placeholder="Service / Product Description" required class="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
           <input type="number" id="linkAmount" placeholder="Amount ($)" step="0.01" required class="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+          <select id="linkExpiry" class="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+            <option value="0">Never Expires</option>
+            <option value="2">Expires in 2 Days</option>
+            <option value="7">Expires in 1 Week</option>
+            <option value="30">Expires in 1 Month</option>
+          </select>
           <button type="submit" class="bg-blue-600 hover:bg-blue-500 font-semibold py-3 rounded-xl shadow-lg transition">Create Link</button>
         </form>
         
         <div id="generatedLinkBox" class="hidden mt-4 p-4 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-between">
           <span id="generatedUrl" class="text-sm font-mono text-blue-300 truncate mr-2"></span>
           <button id="copyBtn" class="bg-blue-600 hover:bg-blue-500 text-xs px-4 py-2 rounded-lg font-semibold transition">Copy</button>
+        </div>
+      </div>
+
+      <!-- Active Payment Links Table (Persistent Record) -->
+      <div id="linksListSection" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl">
+        <h3 class="text-lg font-bold mb-4">Your Generated Payment Links</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+                <th class="py-3 px-4">Title</th>
+                <th class="py-3 px-4">Amount</th>
+                <th class="py-3 px-4">Payments Received</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4">Action</th>
+              </tr>
+            </thead>
+            <tbody id="paymentLinksTableBody" class="divide-y divide-gray-800 text-sm text-gray-300">
+              <tr><td colspan="5" class="py-4 text-center text-gray-500">Loading payment links...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -127,9 +154,7 @@
               </tr>
             </thead>
             <tbody id="transactionsTableBody" class="divide-y divide-gray-800 text-sm text-gray-300">
-              <tr>
-                <td colspan="5" class="py-6 text-center text-gray-500">Loading transactions...</td>
-              </tr>
+              <tr><td colspan="5" class="py-6 text-center text-gray-500">Loading transactions...</td></tr>
             </tbody>
           </table>
         </div>
@@ -146,11 +171,11 @@
       
       <form id="kycForm" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">BVN (Bank Verification Number)</label>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">BVN</label>
           <input type="text" id="bvnInput" placeholder="Enter 11-digit BVN" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">NIN (National Identification Number)</label>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">NIN</label>
           <input type="text" id="ninInput" placeholder="Enter 11-digit NIN" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
         </div>
         <div class="flex gap-3 pt-2">
