@@ -3,56 +3,190 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AkonniiPay - Merchant Dashboard</title>
+  <title>AkonniiPay - Multi-Currency Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-white min-h-screen flex flex-col">
+<body class="bg-gray-950 text-white min-h-screen flex font-sans">
 
-  <!-- Header -->
-  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
-    <div class="text-xl font-bold text-blue-500">AkonniiPay</div>
-    <div class="flex items-center gap-4">
-      <span id="userInfo" class="text-sm text-gray-300">Loading user...</span>
-      <button id="logoutBtn" class="text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition">Logout</button>
+  <!-- Left Sidebar Navigation -->
+  <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col justify-between hidden md:flex">
+    <div>
+      <div class="p-6 text-2xl font-black text-blue-500 tracking-wider">AkonniiPay</div>
+      <nav class="mt-6 space-y-1 px-3">
+        <a href="/dashboard.html" class="flex items-center gap-3 px-4 py-3 bg-blue-600/20 text-blue-400 font-semibold rounded-xl text-sm transition">🏠 Home</a>
+        <a href="#linkSection" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl text-sm transition">🔗 Generate Link</a>
+        <a href="#transactionsSection" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl text-sm transition">📊 Transactions</a>
+        <a href="#" onclick="openKycModal()" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl text-sm transition">🛡️ Verification Center</a>
+        <a href="#" onclick="alert('Settings page coming soon!')" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-xl text-sm transition">⚙️ Settings</a>
+      </nav>
     </div>
-  </header>
-
-  <!-- Main Content -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-8">
-
-    <!-- Wallet Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-gray-900 border border-gray-800 p-6 rounded-xl">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Available Balance</p>
-        <h2 id="walletBalance" class="text-3xl font-extrabold text-green-400 mt-2">$0.00</h2>
-      </div>
-      <div class="bg-gray-900 border border-gray-800 p-6 rounded-xl">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Received</p>
-        <h2 id="totalReceived" class="text-3xl font-extrabold text-blue-400 mt-2">$0.00</h2>
-      </div>
-      <div class="bg-gray-900 border border-gray-800 p-6 rounded-xl">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Active Payment Links</p>
-        <h2 id="linkCount" class="text-3xl font-extrabold text-purple-400 mt-2">0</h2>
-      </div>
+    <div class="p-4 border-t border-gray-800">
+      <button id="sidebarLogout" class="w-full bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white text-sm font-semibold py-2.5 rounded-xl transition">Sign Out</button>
     </div>
+  </aside>
 
-    <!-- Payment Link Generator -->
-    <div class="bg-gray-900 border border-gray-800 p-6 rounded-xl">
-      <h3 class="text-lg font-bold mb-4">Create Payment Link</h3>
-      <form id="createLinkForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input type="text" id="linkTitle" placeholder="Service or Product Description" required class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
-        <input type="number" id="linkAmount" placeholder="Amount ($)" step="0.01" required class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
-        <button type="submit" class="bg-blue-600 hover:bg-blue-500 font-semibold py-2.5 rounded-lg shadow-lg transition">Generate Link</button>
-      </form>
+  <!-- Main Content Wrapper -->
+  <div class="flex-1 flex flex-col min-w-0">
+    
+    <!-- Top Header Bar -->
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <span class="text-xl font-bold md:hidden text-blue-500">AkonniiPay</span>
+        <h1 class="text-lg font-semibold text-gray-200">Account Overview</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="userInfo" class="text-sm text-gray-300 font-medium">Loading...</span>
+        <button id="logoutBtn" class="md:hidden text-sm bg-gray-800 text-gray-300 px-3 py-1.5 rounded-lg">Logout</button>
+      </div>
+    </header>
+
+    <!-- Dashboard Body -->
+    <main class="flex-1 p-6 space-y-6 overflow-y-auto">
+
+      <!-- Verification Banner -->
+      <div id="kycBanner" class="bg-amber-950/40 border border-amber-700/50 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <p class="font-bold text-amber-300 flex items-center gap-2">⚠️ Complete Your Verification Center KYC</p>
+          <p class="text-xs text-amber-200/70 mt-0.5">Submit your BVN or NIN to unlock unlimited withdrawals, multi-currency accounts, and tier-2 payouts.</p>
+        </div>
+        <button onclick="openKycModal()" class="bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-lg">SUBMIT NOW</button>
+      </div>
+
+      <!-- Multi-Currency Balances (Payoneer Style) -->
+      <div>
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Multi-Currency Balances</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+            <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">USD Wallet</span> 🇺🇸</div>
+            <h3 id="usdBalance" class="text-2xl font-extrabold text-green-400 mt-2">$0.00</h3>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+            <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">EUR Wallet</span> 🇪🇺</div>
+            <h3 id="eurBalance" class="text-2xl font-extrabold text-blue-400 mt-2">€0.00</h3>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+            <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">GBP Wallet</span> 🇬🇧</div>
+            <h3 id="gbpBalance" class="text-2xl font-extrabold text-purple-400 mt-2">£0.00</h3>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 p-5 rounded-2xl shadow-xl hover:border-blue-500/50 transition">
+            <div class="flex justify-between items-center"><span class="text-xs text-gray-400 font-bold">NGN Wallet</span> 🇳🇬</div>
+            <h3 id="ngnBalance" class="text-2xl font-extrabold text-amber-400 mt-2">₦0.00</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Cards (Clickable Metrics) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div onclick="openWithdrawModal()" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl cursor-pointer hover:bg-gray-850 hover:border-green-500/50 transition group shadow-xl">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider group-hover:text-green-400 transition">Available Balance (Click to Withdraw)</p>
+          <h2 id="walletBalance" class="text-3xl font-extrabold text-green-400 mt-2">$0.00</h2>
+          <span class="text-xs text-blue-400 mt-3 inline-block">Withdraw or convert funds →</span>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Received</p>
+          <h2 id="totalReceived" class="text-3xl font-extrabold text-blue-400 mt-2">$0.00</h2>
+          <span class="text-xs text-gray-500 mt-3 inline-block">Lifetime volume</span>
+        </div>
+        <div onclick="toggleLinksView()" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl cursor-pointer hover:border-purple-500/50 transition group shadow-xl">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider group-hover:text-purple-400 transition">Active Payment Links (Click to View)</p>
+          <h2 id="linkCount" class="text-3xl font-extrabold text-purple-400 mt-2">0</h2>
+          <span class="text-xs text-purple-400 mt-3 inline-block">Manage active links →</span>
+        </div>
+      </div>
+
+      <!-- Payment Link Generator Section -->
+      <div id="linkSection" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl">
+        <h3 class="text-lg font-bold mb-4">Generate Direct Client Payment Link</h3>
+        <form id="createLinkForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input type="text" id="linkTitle" placeholder="Service / Product Description" required class="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+          <input type="number" id="linkAmount" placeholder="Amount ($)" step="0.01" required class="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+          <button type="submit" class="bg-blue-600 hover:bg-blue-500 font-semibold py-3 rounded-xl shadow-lg transition">Create Link</button>
+        </form>
+        
+        <div id="generatedLinkBox" class="hidden mt-4 p-4 bg-gray-800 rounded-xl border border-gray-700 flex items-center justify-between">
+          <span id="generatedUrl" class="text-sm font-mono text-blue-300 truncate mr-2"></span>
+          <button id="copyBtn" class="bg-blue-600 hover:bg-blue-500 text-xs px-4 py-2 rounded-lg font-semibold transition">Copy</button>
+        </div>
+      </div>
+
+      <!-- Transactions Table Section -->
+      <div id="transactionsSection" class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">Transaction History</h3>
+          <span class="text-xs text-gray-400">Updated in real-time</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Description</th>
+                <th class="py-3 px-4">Type</th>
+                <th class="py-3 px-4">Amount</th>
+                <th class="py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody id="transactionsTableBody" class="divide-y divide-gray-800 text-sm text-gray-300">
+              <tr>
+                <td colspan="5" class="py-6 text-center text-gray-500">Loading transactions...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- KYC Modal -->
+  <div id="kycModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md p-6 rounded-2xl shadow-2xl relative">
+      <h3 class="text-xl font-bold text-amber-400 mb-2">Verification Center</h3>
+      <p class="text-xs text-gray-400 mb-4">Provide your BVN or NIN to comply with regulations and enable automated bank withdrawals.</p>
       
-      <!-- Generated Link Result -->
-      <div id="generatedLinkBox" class="hidden mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700 flex items-center justify-between">
-        <span id="generatedUrl" class="text-sm font-mono text-blue-300 truncate mr-2"></span>
-        <button id="copyBtn" class="bg-blue-600 hover:bg-blue-500 text-xs px-3 py-1.5 rounded transition">Copy Link</button>
-      </div>
+      <form id="kycForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">BVN (Bank Verification Number)</label>
+          <input type="text" id="bvnInput" placeholder="Enter 11-digit BVN" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">NIN (National Identification Number)</label>
+          <input type="text" id="ninInput" placeholder="Enter 11-digit NIN" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold py-3 rounded-xl transition">Verify Identity</button>
+          <button type="button" onclick="closeKycModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl transition">Cancel</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-  </main>
+  <!-- Withdraw Modal -->
+  <div id="withdrawModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md p-6 rounded-2xl shadow-2xl relative">
+      <h3 class="text-xl font-bold text-green-400 mb-2">Withdraw / Payout</h3>
+      <p class="text-xs text-gray-400 mb-4">Transfer funds from your AkonniiPay balance directly to your bank account.</p>
+      
+      <form id="withdrawForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Amount ($)</label>
+          <input type="number" id="withdrawAmount" step="0.01" placeholder="0.00" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Bank Name</label>
+          <input type="text" id="bankName" placeholder="e.g. Access Bank / GTBank" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Account Number</label>
+          <input type="text" id="accountNumber" placeholder="10-digit account number" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500">
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition">Confirm Payout</button>
+          <button type="button" onclick="closeWithdrawModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-3 rounded-xl transition">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="/js/dashboard.js"></script>
 </body>
