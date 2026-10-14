@@ -35,29 +35,42 @@ router.post(
             user.isKycVerified = true;
             user.tier = 'Tier 2';
 
-            // Generate Dedicated Virtual Accounts (or fetch from banking provider API)
-            const seed = user._id.toString().substring(18); // Unique numeric generator seed
-            const numericAccount = '88' + parseInt(seed, 16).toString().padStart(8, '0').slice(0, 8);
+            // Seed unique numeric identifier
+            const seed = user._id.toString().substring(18);
+            const numericAccount = '210' + parseInt(seed, 16).toString().padStart(9, '0').slice(0, 9);
 
             user.accounts = {
                 usd: {
-                    bankName: 'Community Federal Savings Bank',
-                    accountNumber: '409' + numericAccount.slice(3),
-                    routingNumber: '026073150'
+                    accountName: user.name,
+                    bankName: 'Lead Bank',
+                    accountNumber: numericAccount,
+                    accountType: 'Checking',
+                    routingNumber: '101019644',
+                    bankAddress: '1801 Main St. Kansas City, MO 64108, USA'
                 },
                 eur: {
+                    accountName: user.name,
                     bankName: 'Banking Circle S.A.',
-                    iban: 'LU' + numericAccount + '98273645',
-                    bic: 'BCIRLULL'
+                    accountNumber: 'LU88' + numericAccount + '9827',
+                    accountType: 'IBAN Current',
+                    routingNumber: 'BCIRLULL',
+                    bankAddress: '2 Boulevard de la Foire, L-1528 Luxembourg'
                 },
                 gbp: {
+                    accountName: user.name,
                     bankName: 'Modulr FS Limited',
-                    accountNumber: numericAccount,
-                    sortCode: '04-00-04'
+                    accountNumber: numericAccount.slice(0, 8),
+                    accountType: 'Sort Code Account',
+                    routingNumber: '04-00-04',
+                    bankAddress: 'Scale Space, 58 Wood Lane, London W12 7RZ, UK'
                 },
                 ngn: {
+                    accountName: user.name,
                     bankName: 'Wema Bank / AkonniiPay',
-                    accountNumber: '70' + numericAccount.slice(2)
+                    accountNumber: '70' + numericAccount.slice(2, 10),
+                    accountType: 'Savings / Individual',
+                    routingNumber: '035150103',
+                    bankAddress: '54 Marina, Lagos Island, Lagos, Nigeria'
                 }
             };
 

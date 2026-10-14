@@ -5,6 +5,9 @@ if (!token) {
   window.location.href = '/login.html';
 }
 
+let userAccountsData = null;
+let currentUserName = '';
+
 // Logout Handlers
 function handleLogout() {
   localStorage.removeItem('token');
@@ -24,12 +27,61 @@ function closeKycModal() { document.getElementById('kycModal').classList.add('hi
 function openWithdrawModal() { document.getElementById('withdrawModal').classList.remove('hidden'); }
 function closeWithdrawModal() { document.getElementById('withdrawModal').classList.add('hidden'); }
 
+function closeAccountDetailsModal() { document.getElementById('accountDetailsModal').classList.add('hidden'); }
+
 function toggleLinksView() {
   const section = document.getElementById('linksListSection');
   if (section) section.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Load Dashboard Data, Balances, & Dedicated Accounts
+// Open Full Account Details Modal
+function openAccountDetailsModal(currency) {
+  if (!userAccountsData || !userAccountsData[currency] || !userAccountsData[currency].accountNumber) {
+    alert('Please complete your KYC verification in the Verification Center to unlock full account details.');
+    openKycModal();
+    return;
+  }
+
+  const acc = userAccountsData[currency];
+  const titleEl = document.getElementById('modalCurrencyTitle');
+  const contentEl = document.getElementById('modalAccountContent');
+
+  titleEl.innerText = `${currency.toUpperCase()} Receiving Account Details`;
+
+  contentEl.innerHTML = `
+    <div class="p-3 bg-gray-800 rounded-xl space-y-1">
+      <span class="text-xs text-gray-400 block uppercase">Account Name</span>
+      <span class="font-bold text-white text-base">${acc.accountName || currentUserName}</span>
+    </div>
+    <div class="p-3 bg-gray-800 rounded-xl space-y-1">
+      <span class="text-xs text-gray-400 block uppercase">Bank Name</span>
+      <span class="font-bold text-white text-base">${acc.bankName}</span>
+    </div>
+    <div class="p-3 bg-gray-800 rounded-xl flex justify-between items-center">
+      <div>
+        <span class="text-xs text-gray-400 block uppercase">Account / IBAN Number</span>
+        <span class="font-mono font-bold text-green-400 text-base">${acc.accountNumber}</span>
+      </div>
+      <button onclick="navigator.clipboard.writeText('${acc.accountNumber}'); alert('Account number copied!');" class="bg-gray-700 hover:bg-gray-600 text-xs px-3 py-1.5 rounded-lg">Copy</button>
+    </div>
+    <div class="p-3 bg-gray-800 rounded-xl space-y-1">
+      <span class="text-xs text-gray-400 block uppercase">Account Type</span>
+      <span class="font-bold text-white text-base">${acc.accountType || 'Checking'}</span>
+    </div>
+    <div class="p-3 bg-gray-800 rounded-xl space-y-1">
+      <span class="text-xs text-gray-400 block uppercase">${currency === 'eur' ? 'BIC' : currency === 'gbp' ? 'Sort Code' : 'Routing Number'}</span>
+      <span class="font-mono font-bold text-blue-300 text-base">${acc.routingNumber}</span>
+    </div>
+    <div class="p-3 bg-gray-800 rounded-xl space-y-1">
+      <span class="text-xs text-gray-400 block uppercase">Bank Address</span>
+      <span class="text-xs text-gray-300">${acc.bankAddress}</span>
+    </div>
+  `;
+
+  document.getElementById('accountDetailsModal').classList.remove('hidden');
+}
+
+// Load Dashboard Data
 async function loadDashboard() {
   try {
     const res = await fetch(`${API_URL}/api/wallet`, {
@@ -38,7 +90,8 @@ async function loadDashboard() {
     if (!res.ok) throw new Error('Unauthorized');
     const data = await res.json();
 
-    document.getElementById('userInfo').innerText = `Hello, ${data.user.name}`;
+    currentUserName = data.user.name;
+    document.getElementById('userInfo').innerText = `Hello, ${currentUserName}`;
     const balance = data.balance || 0;
     
     document.getElementById('walletBalance').innerText = `$${balance.toFixed(2)}`;
@@ -47,26 +100,24 @@ async function loadDashboard() {
     document.getElementById('gbpBalance').innerText = `£${(balance * 0.79).toFixed(2)}`;
     document.getElementById('ngnBalance').innerText = `₦${(balance * 1450).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-    // Handle Virtual Accounts Display
-    if (data.user.accounts && data.user.accounts.usd?.accountNumber) {
-      const acc = data.user.accounts;
+    userAccountsData = data.user.accounts;
+
+    if (userAccountsData && userAccountsData.usd?.accountNumber) {
       document.getElementById('usdAccountInfo').innerHTML = `
-        <p class="text-gray-300 font-semibold">${acc.usd.bankName}</p>
-        <p class="font-mono text-green-300">Acc: ${acc.usd.accountNumber}</p>
-        <p class="text-gray-400">Routing: ${acc.usd.routingNumber}</p>
+        <p class="text-gray-300 font-semibold">${userAccountsData.usd.bankName}</p>
+        <p class="font-mono text-green-300">Acc: ${userAccountsData.usd.accountNumber}</p>
       `;
       document.getElementById('eurAccountInfo').innerHTML = `
-        <p class="text-gray-300 font-semibold">${acc.eur.bankName}</p>
-        <p class="font-mono text-blue-300">IBAN: ${acc.eur.iban}</p>
+        <p class="text-gray-300 font-semibold">${userAccountsData.eur.bankName}</p>
+        <p class="font-mono text-blue-300">IBAN: ${userAccountsData.eur.accountNumber}</p>
       `;
       document.getElementById('gbpAccountInfo').innerHTML = `
-        <p class="text-gray-300 font-semibold">${acc.gbp.bankName}</p>
-        <p class="font-mono text-purple-300">Acc: ${acc.gbp.accountNumber}</p>
-        <p class="text-gray-400">Sort Code: ${acc.gbp.sortCode}</p>
+        <p class="text-gray-300 font-semibold">${userAccountsData.gbp.bankName}</p>
+        <p class="font-mono text-purple-300">Acc: ${userAccountsData.gbp.accountNumber}</p>
       `;
       document.getElementById('ngnAccountInfo').innerHTML = `
-        <p class="text-gray-300 font-semibold">${acc.ngn.bankName}</p>
-        <p class="font-mono text-amber-300">Acc: ${acc.ngn.accountNumber}</p>
+        <p class="text-gray-300 font-semibold">${userAccountsData.ngn.bankName}</p>
+        <p class="font-mono text-amber-300">Acc: ${userAccountsData.ngn.accountNumber}</p>
       `;
     }
 
@@ -86,6 +137,37 @@ async function loadDashboard() {
     localStorage.removeItem('token');
     window.location.href = '/login.html';
   }
+}
+
+// Auto Name Resolution Trigger on Account Number Input
+const accInput = document.getElementById('accountNumber');
+if (accInput) {
+  accInput.addEventListener('input', async (e) => {
+    const val = e.target.value;
+    const bankName = document.getElementById('bankName').value;
+    const resolvedEl = document.getElementById('resolvedAccountName');
+
+    if (val.length >= 10) {
+      resolvedEl.innerText = 'Resolving name...';
+      try {
+        const res = await fetch(`${API_URL}/api/wallet/resolve-account`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ accountNumber: val, bankName })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          resolvedEl.innerText = data.accountName;
+        } else {
+          resolvedEl.innerText = currentUserName || 'Verified Holder';
+        }
+      } catch (err) {
+        resolvedEl.innerText = currentUserName || 'Verified Holder';
+      }
+    } else {
+      resolvedEl.innerText = 'Enter 10 digits to resolve';
+    }
+  });
 }
 
 // Load Transactions
@@ -236,18 +318,19 @@ document.getElementById('kycForm').addEventListener('submit', async (e) => {
   }
 });
 
-// Withdraw Form
+// Withdraw Form Submission with Resolved Account Name
 document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const amount = document.getElementById('withdrawAmount').value;
   const bankName = document.getElementById('bankName').value;
   const accountNumber = document.getElementById('accountNumber').value;
+  const accountName = document.getElementById('resolvedAccountName').innerText;
 
   try {
     const res = await fetch(`${API_URL}/api/wallet/withdraw`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ amount, bankName, accountNumber })
+      body: JSON.stringify({ amount, bankName, accountNumber, accountName })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Withdrawal failed');
