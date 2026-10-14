@@ -32,8 +32,9 @@ app.use('/api/payment', require('./routes/payment'));
 app.use('/api/webhook', require('./routes/webhook'));
 app.use('/api/user', require('./routes/user'));
 
-// 5. EXPRESS v5 SPA / HTML FALLBACK ROUTE (Uses '/*' instead of '*' to prevent path-to-regexp crash)
-app.get('/*', (req, res) => {
+// 5. EXPRESS v5 SAFE FALLBACK ROUTE
+// Express v5 strict path syntax: uses (.*) regex pattern instead of wildcard string
+app.get('(.*)', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
