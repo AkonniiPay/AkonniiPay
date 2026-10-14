@@ -1,176 +1,133 @@
 const router = require('express').Router();
-const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
-const Transaction = require('../models/Transaction');
-const PaymentLink = require('../models/PaymentLink');
+const https = require('https');
 const auth = require('../middleware/auth');
+const PaymentLink = require('../models/PaymentLink');
 
-const handleValidationErrors = (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array().map(err => err.msg) });
-    }
-    next();
+// Helper function to make HTTP requests safely
+const makeHttpRequest = (options, postData) => {
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+        req.on('error', (err) => reject(err));
+        if (postData) req.write(postData);
+        req.end();
+    });
 };
 
-// 1. CREATE PAYMENT LINK (With Expiration Support)
-router.post(
-    '/create-link',
-    auth,
-    [
-        body('title').notEmpty().withMessage('Title is required.').trim().escape(),
-        body('amount').isNumeric().withMessage('Valid amount is required.')
-    ],
-    handleValidationErrors,
-    async (req, res) => {
-        try {
-            const { title, amount, currency, description, expiresInDays } = req.body;
+// 1. SAVE AND INITIALIZE PAYMENT LINK
+router.post('/initialize', auth, async (req, res) => {
+    try {
+        const { amount, currency, title } = req.body;
 
-            if (!amount || Number(amount) <= 0) {
-                return res.status(400).json({ message: 'Amount must be greater than 0.' });
-            }
-
-            const slug = title.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now();
-
-            let expiresAt = null;
-            if (expiresInDays && Number(expiresInDays) > 0) {
-                expiresAt = new Date();
-                expiresAt.setDate(expiresAt.getDate() + Number(expiresInDays));
-            }
-
-            const newLink = new PaymentLink({
-                merchant: req.user.id,
-                title,
-                amount: Number(amount),
-                currency: currency ? currency.toUpperCase() : 'USD',
-                description: description || '',
-                slug,
-                expiresAt
-            });
-
-            await newLink.save();
-
-            const baseUrl = req.protocol + '://' + req.get('host');
-
-            res.status(201).json({
-                message: 'Payment link created successfully!',
-                id: newLink._id,
-                linkId: newLink._id,
-                slug: newLink.slug,
-                paymentUrl: `${baseUrl}/checkout.html?id=${newLink._id}`,
-                paymentLink: newLink
-            });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
+        if (!amount || !currency || !title) {
+            return res.status(400).json({ message: 'Amount, currency, and title are required.' });
         }
-    }
-);
 
-// 2. GET MERCHANT'S PAYMENT LINKS (For Dashboard Persistence & Tracking)
+        const formattedCurrency = currency.toUpperCase();
+        let checkoutUrl = '';
+        let reference = '';
+
+        // ROUTE TO PAYSTACK FOR NAIRA (NGN)
+        if (formattedCurrency === 'NGN') {
+            const postData = JSON.stringify({
+                email: req.user.email || 'guest@akonniipay.com',
+                amount: Math.round(amount * 100),
+                currency: 'NGN',
+                metadata: { title }
+            });
+
+            const options = {
+                hostname: 'api.paystack.co',
+                port: 443,
+                path: '/transaction/initialize',
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Content-Length': postData.length
+                }
+            };
+
+            const response = await makeHttpRequest(options, postData);
+            if (!response.status) {
+                return res.status(400).json({ message: response.message || 'Paystack initialization failed.' });
+            }
+
+            checkoutUrl = response.data.authorization_url;
+            reference = response.data.reference;
+        } 
+        // ROUTE TO FLUTTERWAVE FOR INTERNATIONAL (USD, GBP, EUR, CAD, GHS)
+        else {
+            reference = `AKP_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            const postData = JSON.stringify({
+                tx_ref: reference,
+                amount,
+                currency: formattedCurrency,
+                redirect_url: 'https://akonniipay.onrender.com/dashboard',
+                customer: { email: req.user.email || 'guest@akonniipay.com' },
+                customizations: {
+                    title: title || 'AkonniiPay Checkout',
+                    description: 'Direct Client Payment'
+                }
+            });
+
+            const options = {
+                hostname: 'api.flutterwave.com',
+                port: 443,
+                path: '/v3/payments',
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Content-Length': postData.length
+                }
+            };
+
+            const response = await makeHttpRequest(options, postData);
+            if (response.status !== 'success') {
+                return res.status(400).json({ message: response.message || 'Flutterwave initialization failed.' });
+            }
+
+            checkoutUrl = response.data.link;
+        }
+
+        // SAVE LINK RECORD TO MONGODB
+        const newLink = new PaymentLink({
+            userId: req.user.id,
+            title,
+            amount,
+            currency: formattedCurrency,
+            url: checkoutUrl
+        });
+
+        await newLink.save();
+
+        res.json({
+            message: 'Payment link created and saved successfully!',
+            checkoutUrl,
+            reference,
+            link: newLink
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. GET ALL PAYMENT LINKS FOR LOGGED-IN MERCHANT
 router.get('/my-links', auth, async (req, res) => {
     try {
-        const links = await PaymentLink.find({ merchant: req.user.id }).sort({ createdAt: -1 });
-        
-        const now = new Date();
-        const updatedLinks = links.map(link => {
-            const isExpired = link.expiresAt && new Date(link.expiresAt) < now;
-            return {
-                ...link._doc,
-                status: isExpired ? 'Expired' : (link.isActive ? 'Active' : 'Inactive')
-            };
-        });
-
-        res.json({ count: updatedLinks.length, links: updatedLinks });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 3. PUBLIC: VIEW PAYMENT LINK DETAILS FOR CHECKOUT
-router.get('/checkout/:identifier', async (req, res) => {
-    try {
-        const identifier = req.params.identifier;
-        let paymentLink = null;
-
-        if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
-            paymentLink = await PaymentLink.findById(identifier).populate('merchant', 'name email');
-        } else {
-            paymentLink = await PaymentLink.findOne({ slug: identifier }).populate('merchant', 'name email');
-        }
-
-        if (!paymentLink) {
-            return res.status(404).json({ message: 'Payment link not found.' });
-        }
-
-        if (paymentLink.expiresAt && new Date(paymentLink.expiresAt) < new Date()) {
-            return res.status(410).json({ message: 'This payment link has expired.' });
-        }
-
-        res.json({
-            id: paymentLink._id,
-            title: paymentLink.title,
-            amount: paymentLink.amount,
-            currency: paymentLink.currency || 'USD',
-            description: paymentLink.description || '',
-            recipientName: paymentLink.merchant ? paymentLink.merchant.name : 'Merchant',
-            slug: paymentLink.slug,
-            expiresAt: paymentLink.expiresAt
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 4. PUBLIC: EXECUTE GUEST PAYMENT
-router.post('/checkout/:identifier/pay', async (req, res) => {
-    try {
-        const { paymentMethod, guestEmail, guestName } = req.body;
-        const identifier = req.params.identifier;
-
-        let paymentLink = null;
-        if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
-            paymentLink = await PaymentLink.findById(identifier);
-        } else {
-            paymentLink = await PaymentLink.findOne({ slug: identifier });
-        }
-
-        if (!paymentLink || !paymentLink.isActive) {
-            return res.status(404).json({ message: 'Payment link not found or inactive.' });
-        }
-
-        if (paymentLink.expiresAt && new Date(paymentLink.expiresAt) < new Date()) {
-            return res.status(410).json({ message: 'This payment link has expired.' });
-        }
-
-        const merchant = await User.findById(paymentLink.merchant);
-        if (!merchant) {
-            return res.status(404).json({ message: 'Recipient account not found.' });
-        }
-
-        const reference = 'PAY_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-
-        merchant.walletBalance = (merchant.walletBalance || 0) + paymentLink.amount;
-        await merchant.save();
-
-        paymentLink.paidCount = (paymentLink.paidCount || 0) + 1;
-        await paymentLink.save();
-
-        const transaction = new Transaction({
-            user: merchant._id,
-            type: 'deposit',
-            amount: paymentLink.amount,
-            currency: paymentLink.currency || 'USD',
-            status: 'completed',
-            reference,
-            description: `Payment for "${paymentLink.title}" from ${guestName || guestEmail || 'Guest Client'}`
-        });
-
-        await transaction.save();
-
-        res.json({
-            message: `Payment of ${paymentLink.currency || 'USD'} ${paymentLink.amount} successful!`,
-            reference
-        });
+        const links = await PaymentLink.find({ userId: req.user.id }).sort({ createdAt: -1 });
+        res.json({ links });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
