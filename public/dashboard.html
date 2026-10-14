@@ -6,20 +6,33 @@
     <title>AkonniiPay - Home Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .sidebar { min-height: 100vh; background: #1a1f36; color: #fff; padding-top: 20px; }
-        .sidebar a { color: #a3aed0; text-decoration: none; padding: 12px 20px; display: block; font-weight: 500; }
-        .sidebar a:hover, .sidebar a.active { color: #fff; background: #2b3149; border-left: 4px solid #4318ff; }
-        .main-content { padding: 30px; }
-        .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    </style>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
+<!-- Mobile Header Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark d-md-none p-3">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="/dashboard">AkonniiPay</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mobileMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse mt-2" id="mobileMenu">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link text-white" href="/dashboard">🏠 Home</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/generate-link">🔗 Generate Link</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/transactions">📊 Transactions</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/verification">🛡️ Verification Center</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="/settings">⚙️ Settings</a></li>
+        <li class="nav-item mt-2"><a class="btn btn-outline-danger btn-sm w-100" href="/login">Sign Out</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar Navigation -->
+        <!-- Desktop Sidebar Navigation -->
         <div class="col-md-2 sidebar d-none d-md-block">
             <h4 class="text-center mb-4 text-white">AkonniiPay</h4>
             <a href="/dashboard" class="active"><i class="fa-solid fa-house me-2"></i> 🏠 Home</a>
@@ -32,41 +45,41 @@
         <!-- Main Content Area -->
         <div class="col-md-10 main-content">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Welcome Back, <span id="merchantName">Merchant</span></h2>
-                <a href="/login" class="btn btn-outline-danger btn-sm">Sign Out</a>
+                <h2 class="fs-3 fw-bold">Welcome Back, <span id="merchantName">Merchant</span></h2>
+                <a href="/login" class="btn btn-outline-danger btn-sm d-none d-md-inline-block">Sign Out</a>
             </div>
 
-            <!-- Balance Summaries -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="stat-card">
+            <!-- Balance Summaries Grid -->
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-4">
+                    <div class="stat-card p-3 bg-white rounded shadow-sm">
                         <small class="text-muted">NGN Balance</small>
                         <h3 class="fw-bold mt-1" id="ngnBalance">₦0.00</h3>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
+                <div class="col-12 col-md-4">
+                    <div class="stat-card p-3 bg-white rounded shadow-sm">
                         <small class="text-muted">USD Balance</small>
                         <h3 class="fw-bold mt-1" id="usdBalance">$0.00</h3>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
+                <div class="col-12 col-md-4">
+                    <div class="stat-card p-3 bg-white rounded shadow-sm">
                         <small class="text-muted">KYC Status</small>
                         <h4 class="fw-bold mt-1 text-warning" id="kycBadge">Pending Verification</h4>
                     </div>
                 </div>
             </div>
 
-            <!-- Payment Link Record Table -->
+            <!-- Payment Link Records Table -->
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0 fw-bold">Payment Link Records</h5>
-                    <a href="/generate-link" class="btn btn-primary btn-sm">+ Create Payment Link</a>
+                    <h5 class="mb-0 fw-bold fs-6">Payment Link Records</h5>
+                    <a href="/generate-link" class="btn btn-primary btn-sm">+ Create Link</a>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                        <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Title</th>
@@ -91,6 +104,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/dashboard.js"></script>
 </body>
 </html>

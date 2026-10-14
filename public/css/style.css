@@ -1,0 +1,65 @@
+/* General Responsive Layout */
+body {
+    background-color: #f4f6f9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow-x: hidden;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    min-height: 100vh;
+    background: #1a1f36;
+    color: #fff;
+    padding-top: 20px;
+    transition: all 0.3s ease;
+}
+
+.sidebar a {
+    color: #a3aed0;
+    text-decoration: none;
+    padding: 12px 20px;
+    display: block;
+    font-weight: 500;
+    border-radius: 8px;
+    margin: 4px 10px;
+}
+
+.sidebar a:hover, .sidebar a.active {
+    color: #fff;
+    background: #2b3149;
+    border-left: 4px solid #4318ff;
+}
+
+.main-content {
+    padding: 20px;
+}
+
+/* Mobile & Tablet Specific Responsive Fixes */
+@media (max-width: 768px) {
+    .sidebar {
+        min-height: auto;
+        padding: 10px 0;
+    }
+
+    .main-content {
+        padding: 15px 10px;
+    }
+
+    /* Stack Stat Cards Vertically */
+    .stat-card {
+        margin-bottom: 15px;
+    }
+
+    /* Ensure Tables Scroll Horizontally on Small Screens */
+    .table-responsive {
+        border: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Adjust Form Inputs for Easy Tapping */
+    .form-control, .form-select, .btn {
+        font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+        padding: 12px;
+    }
+}
