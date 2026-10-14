@@ -1,65 +1,59 @@
-/* General Responsive Layout */
-body {
-    background-color: #f4f6f9;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow-x: hidden;
+/* Prevent horizontal page overflow on mobile devices */
+html, body {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    margin: 0;
+    padding: 0;
 }
 
-/* Sidebar Styles */
-.sidebar {
-    min-height: 100vh;
-    background: #1a1f36;
-    color: #fff;
-    padding-top: 20px;
-    transition: all 0.3s ease;
+/* Ensure all elements fit within screen bounds */
+* {
+    box-sizing: border-box;
 }
 
-.sidebar a {
-    color: #a3aed0;
-    text-decoration: none;
-    padding: 12px 20px;
-    display: block;
-    font-weight: 500;
-    border-radius: 8px;
-    margin: 4px 10px;
+img, video, iframe, svg {
+    max-width: 100%;
+    height: auto;
 }
 
-.sidebar a:hover, .sidebar a.active {
-    color: #fff;
-    background: #2b3149;
-    border-left: 4px solid #4318ff;
-}
-
-.main-content {
-    padding: 20px;
-}
-
-/* Mobile & Tablet Specific Responsive Fixes */
+/* Mobile specific layout fixes */
 @media (max-width: 768px) {
-    .sidebar {
-        min-height: auto;
-        padding: 10px 0;
+    .container, .container-fluid {
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
-    .main-content {
-        padding: 15px 10px;
+    h1, .hero-title {
+        font-size: 2rem !important;
+        line-height: 1.2 !important;
+        text-align: center !important;
     }
 
-    /* Stack Stat Cards Vertically */
-    .stat-card {
-        margin-bottom: 15px;
+    p, .hero-description {
+        font-size: 0.95rem !important;
+        text-align: center !important;
     }
 
-    /* Ensure Tables Scroll Horizontally on Small Screens */
-    .table-responsive {
-        border: 0;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    /* Stack buttons vertically and center them */
+    .btn-group-mobile {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
     }
 
-    /* Adjust Form Inputs for Easy Tapping */
-    .form-control, .form-select, .btn {
-        font-size: 16px; /* Prevents auto-zoom on iOS Safari */
-        padding: 12px;
+    .btn-group-mobile .btn {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    /* Prevent mockups/cards from overflowing */
+    .preview-card, .checkout-preview {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 20px 0 !important;
+        overflow: hidden;
     }
 }
