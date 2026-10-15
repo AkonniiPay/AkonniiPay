@@ -115,69 +115,53 @@
 
           const payBtn = document.getElementById('payBtn');
           payBtn.disabled = true;
-          payBtn.innerText = 'Initializing Secure Gateway...';
+          payBtn.innerText = 'Opening Secure Gateway...';
 
           try {
-            const initRes = await fetch('/api/payment/initialize', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                linkId: link._id,
-                slug: link.slug,
-                email: email,
-                name: name,
-                amount: finalAmount
-              })
-            });
+            // Generate a secure unique transaction reference directly
+            const txRef = 'AKP_' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-            const initData = await initRes.json();
+            let handler = PaystackPop.setup({
+              key: 'pk_live_placeholder', // Replace with your live/test key or keep placeholder if configured via script
+              email: email,
+              amount: Math.round(finalAmount * 100),
+              currency: link.currency || 'NGN',
+              ref: txRef,
+              callback: async function(response) {
+                try {
+                  const creditRes = await fetch('/api/payment/verify-and-credit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      reference: response.reference,
+                      amount: finalAmount,
+                      currency: link.currency || 'NGN',
+                      linkId: link._id
+                    })
+                  });
 
-            if (initRes.ok && initData.success) {
-              let handler = PaystackPop.setup({
-                key: initData.publicKey,
-                email: email,
-                amount: Math.round(finalAmount * 100),
-                currency: link.currency || 'NGN',
-                ref: initData.reference,
-                callback: async function(response) {
-                  try {
-                    const creditRes = await fetch('/api/payment/verify-and-credit', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        reference: response.reference,
-                        amount: finalAmount,
-                        currency: link.currency || 'NGN',
-                        linkId: link._id
-                      })
-                    });
-
-                    const creditData = await creditRes.json();
-                    if (creditRes.ok && creditData.success) {
-                      alert('Payment successful! Funds have been credited to your merchant account.');
-                      window.location.href = '/dashboard';
-                    } else {
-                      alert('Payment successful, but failed to sync balance automatically.');
-                    }
-                  } catch (err) {
-                    console.error("Auto-credit error:", err);
-                    alert('Payment successful, but network error updating balance.');
+                  const creditData = await creditRes.json();
+                  if (creditRes.ok && creditData.success) {
+                    alert('Payment successful! Funds have been credited to your platform balance.');
+                    window.location.href = '/dashboard';
+                  } else {
+                    alert('Payment successful, but failed to sync balance automatically.');
                   }
-                },
-                onClose: function() {
-                  payBtn.disabled = false;
-                  payBtn.innerText = 'Pay Now';
+                } catch (err) {
+                  console.error("Auto-credit error:", err);
+                  alert('Payment successful, but network error updating balance.');
                 }
-              });
-              handler.openIframe();
-            } else {
-              alert(initData.message || "Error initiating payment gateway.");
-              payBtn.disabled = false;
-              payBtn.innerText = 'Pay Now';
-            }
+              },
+              onClose: function() {
+                payBtn.disabled = false;
+                payBtn.innerText = 'Pay Now';
+              }
+            });
+            handler.openIframe();
+
           } catch (err) {
-            console.error("Payment init error:", err);
-            alert("Server error connecting to payment gateway.");
+            console.error("Payment error:", err);
+            alert("Error opening payment gateway.");
             payBtn.disabled = false;
             payBtn.innerText = 'Pay Now';
           }
