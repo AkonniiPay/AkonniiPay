@@ -202,17 +202,14 @@
         if (userData) {
           const fullName = userData.fullName || "Luqman Abiodun Oyewole";
 
-          // Force name across all card elements
           document.querySelectorAll('.userFullName').forEach(el => el.innerText = fullName);
 
-          // Update Balances
           if (userData.balances) {
             document.getElementById('ngnBalance').innerText = `₦${(userData.balances.NGN || 0).toLocaleString()}`;
             document.getElementById('usdBalance').innerText = `$${(userData.balances.USD || 0).toFixed(2)}`;
             document.getElementById('gbpBalance').innerText = `£${(userData.balances.GBP || 0).toFixed(2)}`;
           }
 
-          // Update NGN Card Account Number
           const ngnAcc = userData.virtualAccounts?.NGN;
           if (ngnAcc && ngnAcc.accountNumber) {
             document.getElementById('ngnBankName').innerText = ngnAcc.bankName || "Wema Bank";
@@ -223,6 +220,45 @@
         }
       } catch (err) {
         console.error("Dashboard error:", err);
+      }
+    }
+
+    async function loadPaymentLinks() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const res = await fetch('/api/payment/my-links', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        const tableBody = document.getElementById('paymentLinksTableBody');
+        if (!tableBody) return;
+
+        const links = data.links || data.data || [];
+
+        if (links.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No payment links generated yet. Click "Create Link" to make one.</td></tr>`;
+          return;
+        }
+
+        tableBody.innerHTML = links.map(link => `
+          <tr>
+            <td class="fw-semibold text-dark">${link.title}</td>
+            <td>₦${Number(link.amount).toLocaleString()}</td>
+            <td>${link.currency || 'NGN'}</td>
+            <td><span class="badge bg-success-subtle text-success">${link.status || 'Active'}</span></td>
+            <td>
+              <a href="${link.shortUrl || link.url}" target="_blank" class="text-primary text-decoration-none text-truncate d-inline-block" style="max-width: 200px;">
+                ${link.shortUrl || link.url}
+              </a>
+            </td>
+            <td class="text-muted small">${new Date(link.createdAt || Date.now()).toLocaleDateString()}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error("Error fetching payment links:", err);
       }
     }
 
@@ -284,7 +320,10 @@
       window.location.href = '/login.html';
     });
 
-    document.addEventListener('DOMContentLoaded', loadDashboard);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDashboard();
+      loadPaymentLinks();
+    });
   </script>
 </body>
 </html>
