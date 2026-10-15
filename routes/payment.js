@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const axios = require('axios');
 const PaymentLink = require('../models/PaymentLink');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
@@ -116,41 +117,62 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   }
 });
 
-// POST /api/payment/initialize (Public checkout payment initialization)
+// POST /api/payment/initialize (Official Paystack Server-to-Server Initialization)
 router.post('/initialize', async (req, res) => {
   try {
-    const { linkId, slug } = req.body;
-    let link = null;
+    const { linkId, slug, email, name, amount } = req.body;
 
-    if (slug) {
-      link = await PaymentLink.findOne({ slug });
-    } else if (linkId) {
-      link = await PaymentLink.findById(linkId);
+    const query = slug ? { slug } : { _id: linkId };
+    const link = await PaymentLink.findOne(query);
+
+    if (!link || link.status !== 'Active') {
+      return res.status(404).json({ success: false, message: "Payment link not found or inactive." });
     }
 
-    if (!link) {
-      return res.status(404).json({ success: false, message: "Payment link not found." });
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) {
+      return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
     }
 
-    const txRef = 'AKP_' + crypto.randomBytes(6).toString('hex').toUpperCase();
-    const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUB_KEY || 'pk_test_placeholder';
+    // Paystack expects amount in Kobo (multiply NGN by 100)
+    const amountInKobo = Math.round(Number(amount) * 100);
+    const callbackUrl = `${req.protocol}://${req.get('host')}/dashboard.html?verify_ref=true&linkId=${link._id}&amount=${amount}`;
 
-    return res.json({
-      success: true,
-      reference: txRef,
-      publicKey: publicKey,
-      message: "Initialized successfully"
+    const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
+      email: email,
+      amount: amountInKobo,
+      currency: link.currency || 'NGN',
+      callback_url: callbackUrl,
+      metadata: {
+        linkId: link._id.toString(),
+        clientName: name
+      }
+    }, {
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/json'
+      }
     });
+
+    if (paystackRes.data && paystackRes.data.status) {
+      return res.json({
+        success: true,
+        authorization_url: paystackRes.data.data.authorization_url,
+        reference: paystackRes.data.data.reference
+      });
+    } else {
+      return res.status(400).json({ success: false, message: "Failed to initialize payment with Paystack." });
+    }
   } catch (err) {
-    console.error("Initialize error:", err);
-    return res.status(500).json({ success: false, message: err.message || "Server error" });
+    console.error("Paystack initialize error:", err.response?.data || err.message);
+    return res.status(500).json({ success: false, message: "Error connecting to Paystack gateway." });
   }
 });
 
-// POST /api/payment/verify-and-credit (Automated client/gateway success callback)
+// POST /api/payment/verify-and-credit (Automated merchant wallet crediting)
 router.post('/verify-and-credit', async (req, res) => {
   try {
-    const { amount, currency, linkId } = req.body;
+    const { reference, amount, currency, linkId } = req.body;
 
     const link = await PaymentLink.findById(linkId);
     if (!link) {

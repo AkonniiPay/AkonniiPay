@@ -63,8 +63,6 @@
     </div>
   </div>
 
-  <script src="https://js.paystack.co/v1/inline.js"></script>
-
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const pathParts = window.location.pathname.split('/').filter(Boolean);
@@ -127,52 +125,34 @@
 
           const payBtn = document.getElementById('payBtn');
           payBtn.disabled = true;
-          payBtn.innerText = 'Opening Secure Gateway...';
+          payBtn.innerText = 'Redirecting to Paystack...';
 
           try {
-            const txRef = 'AKP_' + Math.random().toString(36).substring(2, 10).toUpperCase();
-
-            let handler = PaystackPop.setup({
-              key: 'pk_live_placeholder',
-              email: email,
-              amount: Math.round(finalAmount * 100),
-              currency: link.currency || 'NGN',
-              ref: txRef,
-              callback: async function(response) {
-                try {
-                  const creditRes = await fetch('/api/payment/verify-and-credit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      reference: response.reference,
-                      amount: finalAmount,
-                      currency: link.currency || 'NGN',
-                      linkId: link._id
-                    })
-                  });
-
-                  const creditData = await creditRes.json();
-                  if (creditRes.ok && creditData.success) {
-                    alert('Payment successful! Funds have been credited to your platform balance.');
-                    window.location.href = '/dashboard';
-                  } else {
-                    alert('Payment successful, but failed to sync balance automatically.');
-                  }
-                } catch (err) {
-                  console.error("Auto-credit error:", err);
-                  alert('Payment successful, but network error updating balance.');
-                }
-              },
-              onClose: function() {
-                payBtn.disabled = false;
-                payBtn.innerText = 'Pay Now';
-              }
+            const initRes = await fetch('/api/payment/initialize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                linkId: link._id,
+                slug: link.slug,
+                email: email,
+                name: name,
+                amount: finalAmount
+              })
             });
-            handler.openIframe();
 
+            const initData = await initRes.json();
+
+            if (initRes.ok && initData.success && initData.authorization_url) {
+              // Smoothly redirect client to Paystack's official secure payment page
+              window.location.href = initData.authorization_url;
+            } else {
+              alert(initData.message || "Error initiating payment gateway.");
+              payBtn.disabled = false;
+              payBtn.innerText = 'Pay Now';
+            }
           } catch (err) {
-            console.error("Payment error:", err);
-            alert("Error opening payment gateway.");
+            console.error("Payment init error:", err);
+            alert("Server error connecting to payment gateway.");
             payBtn.disabled = false;
             payBtn.innerText = 'Pay Now';
           }
