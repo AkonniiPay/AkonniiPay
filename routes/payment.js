@@ -5,14 +5,8 @@ const mongoose = require('mongoose');
 const PaymentLink = require('../models/PaymentLink');
 const authMiddleware = require('../middleware/auth');
 
-// Helper to convert title into a URL slug
 function slugify(text) {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/[\s\W-]+/g, '-') // Replace spaces & special chars with hyphen
-    .replace(/^-+|-+$/g, '');  // Trim hyphens
+  return text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 // POST /api/payment/create-link
@@ -20,16 +14,13 @@ router.post('/create-link', authMiddleware, async (req, res) => {
   try {
     const { title, amount, currency, feeBearer, expiryDate, expiresAt } = req.body;
 
-    // 1. Title Validation
     if (!title || !title.trim()) {
       return res.status(400).json({ success: false, message: "Payment title is required." });
     }
 
     const numAmount = parseFloat(amount);
-    const rawCurr = currency || 'NGN';
-    const curr = rawCurr.includes('NGN') ? 'NGN' : rawCurr.substring(0, 3).toUpperCase();
+    const curr = currency ? (currency.includes('NGN') ? 'NGN' : currency.substring(0, 3).toUpperCase()) : 'NGN';
 
-    // 2. Strict amount validation
     if (curr === 'NGN' && (!numAmount || numAmount < 200)) {
       return res.status(400).json({ success: false, message: "Minimum amount for Naira (NGN) is ₦200." });
     }
@@ -38,37 +29,30 @@ router.post('/create-link', authMiddleware, async (req, res) => {
     }
 
     const userId = req.user.id || req.user._id;
-
-    // 3. Generate unique reference, slug, and expiration date
-    const randomHex = crypto.randomBytes(4).toString('hex');
     const reference = 'AKP_' + crypto.randomBytes(6).toString('hex').toUpperCase();
-    const baseSlug = slugify(title) || 'payment';
-    const uniqueSlug = `${baseSlug}-${randomHex}`;
+    const uniqueSlug = `${slugify(title)}-${crypto.randomBytes(3).toString('hex')}`;
+    const finalExpiresAt = (expiryDate || expiresAt) ? new Date(expiryDate || expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const finalExpiresAt = (expiryDate || expiresAt) 
-      ? new Date(expiryDate || expiresAt) 
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    // 4. Pre-generate document ID and construct checkout URL
     const linkId = new mongoose.Types.ObjectId();
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const checkoutUrl = `${baseUrl}/checkout.html?id=${linkId}`;
+    
+    // Public client-facing payment link format
+    const publicCheckoutUrl = `${baseUrl}/pay/${uniqueSlug}`;
 
-    // 5. Construct PaymentLink fulfilling all required schema fields + unique slug
     const newLink = new PaymentLink({
       _id: linkId,
-      user: userId,
       userId: userId,
+      user: userId,
       title: title.trim(),
       amount: numAmount,
       currency: curr,
+      chargeBearer: feeBearer || 'merchant',
       feeBearer: feeBearer || 'payer',
       expiresAt: finalExpiresAt,
-      expiryDate: finalExpiresAt,
       reference: reference,
       slug: uniqueSlug,
-      url: checkoutUrl,
-      shortUrl: checkoutUrl,
+      url: publicCheckoutUrl,
+      shortUrl: publicCheckoutUrl,
       status: 'Active'
     });
 
@@ -79,7 +63,7 @@ router.post('/create-link', authMiddleware, async (req, res) => {
       message: "Payment link created successfully!",
       link: {
         ...newLink.toObject(),
-        shortUrl: checkoutUrl
+        shortUrl: publicCheckoutUrl
       }
     });
   } catch (err) {
@@ -99,17 +83,37 @@ router.get('/my-links', authMiddleware, async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const formattedLinks = links.map(link => {
       const obj = link.toObject();
-      const generatedUrl = obj.url || obj.shortUrl || `${baseUrl}/checkout.html?id=${obj._id}`;
+      const slugPath = obj.slug ? `/pay/${obj.slug}` : `/checkout.html?id=${obj._id}`;
+      const generatedUrl = obj.url && obj.url.includes('/pay/') ? obj.url : `${baseUrl}${slugPath}`;
       return {
         ...obj,
-        shortUrl: generatedUrl
+        shortUrl: generatedUrl,
+        url: generatedUrl,
+        userId: obj.userId || obj.user,
+        user: obj.user || obj.userId
       };
     });
 
-    return res.json({ success: true, links: formattedLinks });
+    return res.json({ success: true, links: formattedLinks, data: formattedLinks });
   } catch (err) {
     console.error("Fetch links error:", err);
     return res.status(500).json({ success: false, message: "Error fetching payment links." });
+  }
+});
+
+// GET /api/payment/link-by-slug/:slug (Public endpoint for clients)
+router.get('/link-by-slug/:slug', async (req, res) => {
+  try {
+    const link = await PaymentLink.findOne({ slug: req.params.slug });
+    
+    if (!link || link.status !== 'Active') {
+      return res.status(404).json({ success: false, message: "This payment link is invalid, expired, or has been closed." });
+    }
+
+    return res.json({ success: true, link });
+  } catch (err) {
+    console.error("Error fetching link by slug:", err);
+    return res.status(500).json({ success: false, message: "Server error fetching payment link." });
   }
 });
 
