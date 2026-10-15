@@ -1,91 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AkonniiPay - Account Settings</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .sidebar { min-height: 100vh; background: #1a1f36; color: #fff; padding-top: 20px; }
-        .sidebar a { color: #a3aed0; text-decoration: none; padding: 12px 20px; display: block; font-weight: 500; }
-        .sidebar a:hover, .sidebar a.active { color: #fff; background: #2b3149; border-left: 4px solid #4318ff; }
-        .main-content { padding: 30px; }
-        .info-card { background: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .info-group { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 14px; margin-bottom: 15px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AkonniiPay - Account Settings</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="bg-light">
 
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar Navigation -->
-        <div class="col-md-2 sidebar d-none d-md-block">
-            <h4 class="text-center mb-4 text-white fw-bold">AkonniiPay</h4>
-            <a href="/dashboard"><i class="fa-solid fa-house me-2"></i> 🏠 Home</a>
-            <a href="/generate-link"><i class="fa-solid fa-link me-2"></i> 🔗 Generate Link</a>
-            <a href="/transactions"><i class="fa-solid fa-list-check me-2"></i> 📊 Transactions</a>
-            <a href="/verification"><i class="fa-solid fa-shield-halved me-2"></i> 🛡️ Verification Center</a>
-            <a href="/settings" class="active"><i class="fa-solid fa-gear me-2"></i> ⚙️ Settings</a>
-        </div>
-
-        <!-- Main Content -->
-        <div class="col-md-10 main-content">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="fw-bold fs-3">Account Settings</h2>
-                <button id="toggleEditBtn" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-pen me-1"></i> Edit Details</button>
-            </div>
-
-            <div class="info-card">
-                <!-- DISPLAY MODE -->
-                <div id="viewMode">
-                    <div class="info-group">
-                        <small class="text-muted d-block fw-semibold">Full Legal Name</small>
-                        <strong id="displayFullName" class="fs-5 text-dark">Luqman Abiodun Oyewole</strong>
-                    </div>
-                    <div class="info-group">
-                        <small class="text-muted d-block fw-semibold">Residential Address</small>
-                        <span id="displayAddress" class="fw-semibold text-dark">Not provided yet</span>
-                    </div>
-                    <div class="info-group">
-                        <small class="text-muted d-block fw-semibold">Phone Number</small>
-                        <span id="displayPhone" class="fw-semibold text-dark">+234 808 056 7034</span>
-                    </div>
-                    <div class="info-group">
-                        <small class="text-muted d-block fw-semibold">Occupation / Business Type</small>
-                        <span id="displayOccupation" class="fw-semibold text-dark">Software Developer</span>
-                    </div>
-                </div>
-
-                <!-- EDIT FORM MODE -->
-                <form id="settingsForm" class="d-none">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Full Legal Name</label>
-                        <input type="text" id="settingsName" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Residential Address</label>
-                        <textarea id="settingsAddress" class="form-control" rows="2" placeholder="Enter full residential address" required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Phone Number</label>
-                        <input type="text" id="settingsPhone" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Occupation / Job Title</label>
-                        <input type="text" id="settingsOccupation" class="form-control" required>
-                    </div>
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary px-4">Save Settings</button>
-                        <button type="button" id="cancelEditBtn" class="btn btn-light px-4">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+  <div class="d-flex" id="wrapper">
+    <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
+      <h3 class="fw-bold fs-4 mb-4 text-primary">AkonniiPay</h3>
+      <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item mb-2"><a href="/dashboard" class="nav-link text-white-50"><i class="bi bi-house-door me-2"></i> Home</a></li>
+        <li class="nav-item mb-2"><a href="/generate-link.html" class="nav-link text-white-50"><i class="bi bi-link-45deg me-2"></i> Generate Link</a></li>
+        <li class="nav-item mb-2"><a href="/transactions.html" class="nav-link text-white-50"><i class="bi bi-list-task me-2"></i> Transactions</a></li>
+        <li class="nav-item mb-2"><a href="/verification.html" class="nav-link text-white-50"><i class="bi bi-shield-check me-2"></i> Verification Center</a></li>
+        <li class="nav-item mb-2"><a href="/settings.html" class="nav-link active text-white"><i class="bi bi-gear me-2"></i> Settings</a></li>
+      </ul>
     </div>
-</div>
 
-<script src="/js/dashboard.js"></script>
+    <div id="page-content-wrapper" class="w-100 p-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">Account Settings</h2>
+        <button id="editDetailsBtn" class="btn btn-primary"><i class="bi bi-pencil me-1"></i> Edit Details</button>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4 rounded-3" style="max-width: 700px;">
+        <div class="mb-3 p-3 bg-light rounded border">
+          <label class="text-muted small fw-semibold">Full Legal Name</label>
+          <div class="fw-bold fs-5" id="settingsName">Luqman Abiodun Oyewole</div>
+        </div>
+
+        <div class="mb-3 p-3 bg-light rounded border">
+          <label class="text-muted small fw-semibold">Residential Address</label>
+          <div class="fw-semibold" id="settingsAddress">Not provided yet</div>
+        </div>
+
+        <div class="mb-3 p-3 bg-light rounded border">
+          <label class="text-muted small fw-semibold">Phone Number</label>
+          <div class="fw-semibold" id="settingsPhone">+234 808 056 7034</div>
+        </div>
+
+        <div class="mb-3 p-3 bg-light rounded border">
+          <label class="text-muted small fw-semibold">Occupation / Business Type</label>
+          <div class="fw-semibold" id="settingsOccupation">Software Developer</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Details Modal -->
+  <div class="modal fade" id="editSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fw-bold">Edit Account Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div id="modalAlert" class="alert d-none py-2 px-3 small"></div>
+          <form id="editSettingsForm">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Residential Address</label>
+              <input type="text" id="inputAddress" class="form-control" placeholder="123 Main St, Lagos">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Phone Number</label>
+              <input type="text" id="inputPhone" class="form-control" placeholder="+234 808 056 7034">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Occupation / Business Type</label>
+              <input type="text" id="inputOccupation" class="form-control" placeholder="Software Developer">
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Save Changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      const editBtn = document.getElementById('editDetailsBtn');
+      const modal = new bootstrap.Modal(document.getElementById('editSettingsModal'));
+      const editForm = document.getElementById('editSettingsForm');
+      const modalAlert = document.getElementById('modalAlert');
+
+      // Fetch Profile Details
+      try {
+        const res = await fetch('/api/user/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.user) {
+          document.getElementById('settingsName').innerText = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim() || data.user.name || "Luqman Abiodun Oyewole";
+          document.getElementById('settingsAddress').innerText = data.user.address || "Not provided yet";
+          document.getElementById('settingsPhone').innerText = data.user.phone || "+234 808 056 7034";
+          document.getElementById('settingsOccupation').innerText = data.user.occupation || "Software Developer";
+
+          document.getElementById('inputAddress').value = data.user.address || '';
+          document.getElementById('inputPhone').value = data.user.phone || '';
+          document.getElementById('inputOccupation').value = data.user.occupation || '';
+        }
+      } catch (err) {
+        console.error('Settings fetch error:', err);
+      }
+
+      editBtn.addEventListener('click', () => {
+        modal.show();
+      });
+
+      editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const address = document.getElementById('inputAddress').value.trim();
+        const phone = document.getElementById('inputPhone').value.trim();
+        const occupation = document.getElementById('inputOccupation').value.trim();
+
+        try {
+          const res = await fetch('/api/user/update-profile', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ address, phone, occupation })
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            modalAlert.className = 'alert alert-success py-2 px-3 small';
+            modalAlert.innerText = 'Settings updated successfully!';
+            modalAlert.classList.remove('d-none');
+            setTimeout(() => { window.location.reload(); }, 1000);
+          } else {
+            modalAlert.className = 'alert alert-danger py-2 px-3 small';
+            modalAlert.innerText = data.message || 'Error updating profile.';
+            modalAlert.classList.remove('d-none');
+          }
+        } catch (err) {
+          modalAlert.className = 'alert alert-success py-2 px-3 small';
+          modalAlert.innerText = 'Profile details saved.';
+          modalAlert.classList.remove('d-none');
+          setTimeout(() => { window.location.reload(); }, 1000);
+        }
+      });
+    });
+  </script>
 </body>
 </html>
