@@ -3,9 +3,6 @@ const axios = require('axios');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
-// Direct Paystack Secret Key
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_live_1d3c781f7303cc735f53b5830f4f81544cef382e';
-
 // Helper to construct foreign virtual accounts
 function buildForeignAccounts(fullName) {
   const accountHolder = fullName || "Luqman Abiodun Oyewole";
@@ -107,51 +104,52 @@ router.post('/verify', auth, async (req, res) => {
         const lastName = nameParts.slice(1).join(' ') || 'User';
 
         let realNgnAccount = null;
+        const secretKey = process.env.PAYSTACK_SECRET_KEY;
 
-        // Create Real Paystack Dedicated Virtual Account
-        try {
-            // 1. Create or fetch Paystack Customer Profile
-            const customerRes = await axios.post(
-                'https://api.paystack.co/customer',
-                {
-                    email: user.email,
-                    first_name: firstName,
-                    last_name: lastName,
-                    phone: user.phoneNumber || user.phone || '+2348080567034'
-                },
-                {
-                    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
+        // Create Real Paystack Dedicated Virtual Account if key exists
+        if (secretKey) {
+            try {
+                const customerRes = await axios.post(
+                    'https://api.paystack.co/customer',
+                    {
+                        email: user.email,
+                        first_name: firstName,
+                        last_name: lastName,
+                        phone: user.phoneNumber || user.phone || '+2348080567034'
+                    },
+                    {
+                        headers: { Authorization: `Bearer ${secretKey}` }
+                    }
+                );
+
+                const customerCode = customerRes.data.data.customer_code;
+
+                const dvaRes = await axios.post(
+                    'https://api.paystack.co/dedicated_account',
+                    {
+                        customer: customerCode,
+                        preferred_bank: "wema-bank",
+                        bvn: bvn.trim()
+                    },
+                    {
+                        headers: { Authorization: `Bearer ${secretKey}` }
+                    }
+                );
+
+                if (dvaRes.data && dvaRes.data.status && dvaRes.data.data) {
+                    const accountData = dvaRes.data.data;
+                    realNgnAccount = {
+                        bankName: accountData.bank?.name || "Wema Bank",
+                        accountNumber: accountData.account_number,
+                        accountName: accountData.account_name || fullName
+                    };
                 }
-            );
-
-            const customerCode = customerRes.data.data.customer_code;
-
-            // 2. Generate Real Dedicated Virtual Account Number
-            const dvaRes = await axios.post(
-                'https://api.paystack.co/dedicated_account',
-                {
-                    customer: customerCode,
-                    preferred_bank: "wema-bank",
-                    bvn: bvn.trim()
-                },
-                {
-                    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
-                }
-            );
-
-            if (dvaRes.data && dvaRes.data.status && dvaRes.data.data) {
-                const accountData = dvaRes.data.data;
-                realNgnAccount = {
-                    bankName: accountData.bank?.name || "Wema Bank",
-                    accountNumber: accountData.account_number,
-                    accountName: accountData.account_name || fullName
-                };
+            } catch (paystackErr) {
+                console.warn("Paystack DVA Response Notice:", paystackErr.response?.data || paystackErr.message);
             }
-        } catch (paystackErr) {
-            console.warn("Paystack DVA Response Notice:", paystackErr.response?.data || paystackErr.message);
         }
 
-        // Fallback generator if Paystack DVA is pending compliance activation on Paystack account
+        // Fallback generator if Paystack DVA is pending activation
         if (!realNgnAccount || !realNgnAccount.accountNumber) {
             realNgnAccount = {
                 bankName: "Wema Bank",

@@ -5,14 +5,17 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const PaymentLink = require('../models/PaymentLink');
 
-// Live Paystack Secret Key
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_live_1d3c781f7303cc735f53b5830f4f81544cef382e';
-
 // POST /api/webhook/paystack
 router.post('/paystack', async (req, res) => {
     try {
-        // Verify Paystack HMAC SHA512 signature
-        const hash = crypto.createHmac('sha512', PAYSTACK_SECRET_KEY).update(JSON.stringify(req.body)).digest('hex');
+        const secretKey = process.env.PAYSTACK_SECRET_KEY;
+        if (!secretKey) {
+            console.error('[WEBHOOK] Missing PAYSTACK_SECRET_KEY environment variable');
+            return res.status(500).send('Configuration error');
+        }
+
+        // Verify Paystack HMAC SHA512 signature securely
+        const hash = crypto.createHmac('sha512', secretKey).update(JSON.stringify(req.body)).digest('hex');
 
         if (hash !== req.headers['x-paystack-signature']) {
             console.error('[WEBHOOK] Signature mismatch');
@@ -37,20 +40,15 @@ router.post('/paystack', async (req, res) => {
 
             let merchant = null;
 
-            // Scenario A: Deposit via Payment Link
             if (metadata.merchantId) {
                 merchant = await User.findById(metadata.merchantId);
-            } 
-            // Scenario B: Deposit via Dedicated Virtual Account (DVA)
-            else if (customerEmail) {
+            } else if (customerEmail) {
                 merchant = await User.findOne({ email: customerEmail.toLowerCase().trim() });
             }
 
             if (merchant) {
-                // Deduct 4% platform processing fee for net balance credit
-                const netAmount = amountPaid * 0.96;
+                const netAmount = amountPaid * 0.96; // 4% processing fee deduction
 
-                // 1. Update balances object
                 merchant.balances = merchant.balances || { NGN: 0, USD: 0, GBP: 0 };
                 const currKey = currency.toUpperCase();
                 merchant.balances[currKey] = (merchant.balances[currKey] || 0) + netAmount;
@@ -58,7 +56,6 @@ router.post('/paystack', async (req, res) => {
 
                 await merchant.save();
 
-                // 2. Increment Payment Link paid counter if payment came from a link
                 if (metadata.linkId) {
                     try {
                         await PaymentLink.findByIdAndUpdate(metadata.linkId, { $inc: { paidCount: 1 } });
@@ -67,7 +64,6 @@ router.post('/paystack', async (req, res) => {
                     }
                 }
 
-                // 3. Create Transaction Record for Dashboard
                 const transaction = new Transaction({
                     user: merchant._id,
                     type: 'deposit',
