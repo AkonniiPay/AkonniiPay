@@ -67,12 +67,24 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      const pathParts = window.location.pathname.split('/');
-      const slug = pathParts.includes('pay') ? pathParts[pathParts.indexOf('pay') + 1] : null;
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      const payIndex = pathParts.indexOf('pay');
+      const slug = payIndex !== -1 ? pathParts[payIndex + 1] : null;
       const urlParams = new URLSearchParams(window.location.search);
       const linkId = urlParams.get('id');
 
-      const endpoint = slug ? `/api/payment/link-by-slug/${slug}` : `/api/payment/link/${linkId}`;
+      let endpoint = '';
+      if (slug) {
+        endpoint = `/api/payment/link-by-slug/${slug}`;
+      } else if (linkId) {
+        endpoint = `/api/payment/link/${linkId}`;
+      } else {
+        document.getElementById('loadingState').classList.add('d-none');
+        const errBox = document.getElementById('errorState');
+        errBox.innerText = "Invalid payment link URL.";
+        errBox.classList.remove('d-none');
+        return;
+      }
 
       try {
         const res = await fetch(endpoint);
@@ -118,11 +130,10 @@
           payBtn.innerText = 'Opening Secure Gateway...';
 
           try {
-            // Generate a secure unique transaction reference directly
             const txRef = 'AKP_' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
             let handler = PaystackPop.setup({
-              key: 'pk_live_placeholder', // Replace with your live/test key or keep placeholder if configured via script
+              key: 'pk_live_placeholder',
               email: email,
               amount: Math.round(finalAmount * 100),
               currency: link.currency || 'NGN',
