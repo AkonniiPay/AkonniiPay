@@ -120,34 +120,37 @@ router.get('/link-by-slug/:slug', async (req, res) => {
 router.post('/initialize', async (req, res) => {
   try {
     const { linkId, slug } = req.body;
-    const query = slug ? { slug } : { _id: linkId };
-    const link = await PaymentLink.findOne(query);
+    let link = null;
 
-    if (!link || link.status !== 'Active') {
-      return res.status(404).json({ success: false, message: "Payment link not found or inactive." });
+    if (slug) {
+      link = await PaymentLink.findOne({ slug });
+    } else if (linkId) {
+      link = await PaymentLink.findById(linkId);
+    }
+
+    if (!link) {
+      return res.status(404).json({ success: false, message: "Payment link not found." });
     }
 
     const txRef = 'AKP_' + crypto.randomBytes(6).toString('hex').toUpperCase();
-    
-    // Fallback to a hardcoded public key test string if env variable is missing, preventing crashes
-    const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUB_KEY || 'pk_test_placeholder_key';
+    const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUB_KEY || 'pk_test_placeholder';
 
     return res.json({
       success: true,
       reference: txRef,
       publicKey: publicKey,
-      message: "Payment initialized successfully."
+      message: "Initialized successfully"
     });
   } catch (err) {
-    console.error("Payment initialization error:", err);
-    return res.status(500).json({ success: false, message: "Server error initializing payment." });
+    console.error("Initialize error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Server error" });
   }
 });
 
 // POST /api/payment/verify-and-credit (Automated client/gateway success callback)
 router.post('/verify-and-credit', async (req, res) => {
   try {
-    const { reference, amount, currency, linkId } = req.body;
+    const { amount, currency, linkId } = req.body;
 
     const link = await PaymentLink.findById(linkId);
     if (!link) {
