@@ -1,6 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
 
+  if (!token) {
+    window.location.href = '/login.html';
+    return;
+  }
+
   // 1. Fetch Profile, KYC Status, and Dedicated Virtual Accounts
   try {
     const res = await fetch('/api/user/profile', {
@@ -14,9 +19,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const data = await res.json();
-    const user = data.user;
+    const user = data.user || data;
 
     if (user) {
+      // Priority Full Legal Name
+      const fullName = user.fullName || `${user.firstName \vert{}\vert{} ''}${user.lastName || ''}`.trim() || user.name || "Luqman Abiodun Oyewole";
+
       // Set Balances
       if (document.getElementById('ngnBalance')) document.getElementById('ngnBalance').innerText = `₦${(user.balances?.NGN || 0).toLocaleString()}`;
       if (document.getElementById('usdBalance')) document.getElementById('usdBalance').innerText = `$${(user.balances?.USD || 0).toFixed(2)}`;
@@ -34,10 +42,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // Populate NGN Dedicated Virtual Account Card
-      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || "AkonniiPay Merchant";
-      const ngnAcc = user.virtualAccounts?.NGN;
+      // Update Dashboard Card Names
+      if (document.getElementById('ngnCardName')) document.getElementById('ngnCardName').innerText = fullName;
+      if (document.getElementById('usdCardName')) document.getElementById('usdCardName').innerText = fullName;
+      if (document.getElementById('gbpCardName')) document.getElementById('gbpCardName').innerText = fullName;
+      if (document.getElementById('eurCardName')) document.getElementById('eurCardName').innerText = fullName;
 
+      // Populate NGN Dedicated Virtual Account Card
+      const ngnAcc = user.virtualAccounts?.NGN;
       if (ngnAcc && ngnAcc.accountNumber) {
         if (document.getElementById('ngnBankName')) document.getElementById('ngnBankName').innerText = ngnAcc.bankName || "Wema Bank";
         if (document.getElementById('ngnAccNo')) document.getElementById('ngnAccNo').innerText = ngnAcc.accountNumber;
@@ -87,8 +99,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Setup Click Handlers for Account Cards
 function setupCardModals(user) {
-  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || "AkonniiPay Merchant";
-  const ngn = user.virtualAccounts?.NGN || {};
+  const fullName = user.fullName || `${user.firstName \vert{}\vert{} ''}${user.lastName || ''}`.trim() || user.name || "Luqman Abiodun Oyewole";
+  const va = user.virtualAccounts || {};
+
+  const ngn = va.NGN || {};
+  const usd = va.USD || {};
+  const gbp = va.GBP || {};
+  const eur = va.EUR || {};
 
   document.getElementById('ngnAccountCard')?.addEventListener('click', () => {
     openAccountModal(
@@ -96,21 +113,42 @@ function setupCardModals(user) {
       ngn.bankName || 'Wema Bank',
       ngn.accountNumber || 'Pending Verification',
       '035 (Bank Code)',
-      ngn.accountName || fullName,
+      fullName,
       'Central Bank of Nigeria NIBSS Direct Deposit'
     );
   });
 
   document.getElementById('usdAccountCard')?.addEventListener('click', () => {
-    openAccountModal('USD', 'Community Federal Savings Bank', '3094882104', '026073150 (Routing)', fullName, '89 5th Ave, New York, NY 10003, USA');
+    openAccountModal(
+      'USD',
+      usd.bankName || 'Community Federal Savings Bank',
+      usd.accountNumber || '3094882104',
+      `${usd.routingNumber || '026073150'} (Routing)`,
+      fullName,
+      usd.address || '89 5th Ave, New York, NY 10003, USA'
+    );
   });
 
   document.getElementById('gbpAccountCard')?.addEventListener('click', () => {
-    openAccountModal('GBP', 'Barclays Bank UK', '70482910', '20-04-15 (Sort Code)', fullName, '1 Churchill Place, London E14 5HP, UK');
+    openAccountModal(
+      'GBP',
+      gbp.bankName || 'Barclays Bank UK',
+      gbp.accountNumber || '70482910',
+      `${gbp.sortCode || '20-04-15'} (Sort Code)`,
+      fullName,
+      gbp.address || '1 Churchill Place, London E14 5HP, UK'
+    );
   });
 
   document.getElementById('eurAccountCard')?.addEventListener('click', () => {
-    openAccountModal('EUR', 'BNP Paribas', 'FR7630004000011234567890143', 'BNPAFRPP (BIC)', fullName, '16 Boulevard des Italiens, 75009 Paris, France');
+    openAccountModal(
+      'EUR',
+      eur.bankName || 'BNP Paribas',
+      eur.iban || 'FR7630004000011234567890143',
+      `${eur.bic || 'BNPAFRPP'} (BIC)`,
+      fullName,
+      eur.address || '16 Boulevard des Italiens, 75009 Paris, France'
+    );
   });
 }
 
@@ -140,60 +178,4 @@ function openAccountModal(type, bankName, accountNumber, routingOrSort, accName,
       <div class="fw-bold fs-6 font-monospace bg-light p-2 rounded border">${routingOrSort}</div>
     </div>
     <div class="mb-3">
-      <label class="text-muted small fw-semibold">Bank Address / Clearing</label>
-      <div class="fw-semibold text-secondary">${address}</div>
-    </div>
-    <div class="alert alert-info py-2 px-3 small mt-3 mb-0">
-      <i class="bi bi-info-circle me-1"></i> Direct wire deposits automatically route through processing fee filters (4%) and credit your live ${type} Platform Balance instantly.
-    </div>
-  `;
-
-  const modal = new bootstrap.Modal(document.getElementById('bankDetailModal'));
-  modal.show();
-}
-
-// Fetch Payment Link Records Table Helper
-async function fetchPaymentLinks(token) {
-  const tableBody = document.getElementById('paymentLinksTableBody');
-  if (!tableBody) return;
-
-  try {
-    const res = await fetch('/api/payment/my-links', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-
-    if (data.links && data.links.length > 0) {
-      tableBody.innerHTML = data.links.map(link => `
-        <tr>
-          <td class="fw-semibold">${link.title}</td>
-          <td>${link.amount ? '₦' + link.amount.toLocaleString() : 'Open'}</td>
-          <td><span class="badge bg-secondary">${link.currency || 'NGN'}</span></td>
-          <td>
-            <span class="badge ${link.status === 'Closed' ? 'bg-danger' : 'bg-success'}">
-              ${link.status || 'Active'}
-            </span>
-          </td>
-          <td>
-            <a href="${link.shortUrl || `/checkout.html?id=${link._id}`}" target="_blank" class="text-decoration-none">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Pay Link
-            </a>
-          </td>
-          <td class="text-muted small">${new Date(link.createdAt).toLocaleDateString()}</td>
-        </tr>
-      `).join('');
-    } else {
-      tableBody.innerHTML = `
-        <tr>
-          <td colspan="6" class="text-center text-muted py-3">No payment links generated yet. Click "Create Link" to make one.</td>
-        </tr>
-      `;
-    }
-  } catch (err) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="6" class="text-center text-danger py-3">Error loading payment links.</td>
-      </tr>
-    `;
-  }
-}
+      <label class="text-muted small fw-semibold">Bank Address / Clearing
