@@ -1,11 +1,20 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Fetch User Profile and Platform Balances
+  const token = localStorage.getItem('token');
+
+  // 1. Check Profile & Authentication
   try {
-    const res = await fetch('/api/user/profile');
+    const res = await fetch('/api/user/profile', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
     if (!res.ok) {
+      localStorage.removeItem('token');
       window.location.href = '/login.html';
       return;
     }
+
     const data = await res.json();
     
     if (data.user) {
@@ -23,16 +32,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Error loading dashboard profile:', err);
   }
 
-  // 2. Fetch Payment Link Records
+  // 2. Load Payment Links Table
   fetchPaymentLinks();
 
-  // 3. Sign Out Button Listener
+  // 3. Sign Out Listener
   document.getElementById('signOutBtn')?.addEventListener('click', async () => {
+    localStorage.removeItem('token');
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/login.html';
   });
 
-  // 4. Sync / Recover Payment Listener
+  // 4. Sync Payment Recovery Handler
   document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
     const reference = prompt("Enter your Paystack Transaction Reference Code (e.g., AKP_NGN_...):");
     if (!reference || !reference.trim()) return;
@@ -41,18 +51,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch(`/api/payment/sync-payment?reference=${encodeURIComponent(reference.trim())}`);
       const data = await res.json();
       if (data.success) {
-        alert(`Success! Payment of ${data.amount} NGN synchronized. Your platform balance has been updated.`);
+        alert(`Success! Payment of ${data.amount} NGN synchronized. Balance updated.`);
         window.location.reload();
       } else {
-        alert(`Sync Failed: ${data.message || 'Transaction reference not found or already processed.'}`);
+        alert(`Sync Failed: ${data.message || 'Reference not found or already processed.'}`);
       }
     } catch (err) {
-      alert('Error communicating with the payment sync service.');
+      alert('Error communicating with sync service.');
     }
   });
 });
 
-// Helper: Open Interactive Account Detail Modal
+// Interactive Account Modal Handler
 function openAccountModal(type, bankName, accountNumber, routingOrSort, address) {
   const modalTitle = document.getElementById('modalBankTitle');
   const modalBody = document.getElementById('modalBankBody');
@@ -76,7 +86,7 @@ function openAccountModal(type, bankName, accountNumber, routingOrSort, address)
       <div class="fw-semibold text-secondary">${address}</div>
     </div>
     <div class="alert alert-info py-2 px-3 small mt-3 mb-0">
-      <i class="bi bi-info-circle me-1"></i> Direct deposits to these account details automatically route through processing fee filters (4%) and update your live ${type} Platform Balance.
+      <i class="bi bi-info-circle me-1"></i> Direct deposits to these details automatically route through processing fee filters (4%) and update your live ${type} Platform Balance.
     </div>
   `;
 
@@ -84,9 +94,11 @@ function openAccountModal(type, bankName, accountNumber, routingOrSort, address)
   modal.show();
 }
 
-// Helper: Load Payment Links Table
+// Fetch Payment Links Table Helper
 async function fetchPaymentLinks() {
   const tableBody = document.getElementById('paymentLinksTableBody');
+  if (!tableBody) return;
+
   try {
     const res = await fetch('/api/payment/my-links');
     const data = await res.json();
@@ -120,7 +132,7 @@ async function fetchPaymentLinks() {
   } catch (err) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center text-danger py-3">Error loading payment link records.</td>
+        <td colspan="6" class="text-center text-danger py-3">Error loading payment links.</td>
       </tr>
     `;
   }
