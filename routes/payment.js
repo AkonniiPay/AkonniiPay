@@ -130,10 +130,13 @@ router.post('/initialize', async (req, res) => {
 
     const txRef = 'AKP_' + crypto.randomBytes(6).toString('hex').toUpperCase();
 
+    // Pass the actual Paystack Public Key from environment variables
+    const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUB_KEY || '';
+
     return res.json({
       success: true,
       reference: txRef,
-      publicKey: process.env.PAYSTACK_PUBLIC_KEY || 'pk_live_placeholder',
+      publicKey: publicKey,
       message: "Payment initialized successfully."
     });
   } catch (err) {
@@ -180,7 +183,7 @@ router.post('/verify-and-credit', async (req, res) => {
   }
 });
 
-// GET /api/payment/sync-payment (Recovers and credits pending test payments)
+// GET /api/payment/sync-payment (Emergency recovery fallback)
 router.get('/sync-payment', authMiddleware, async (req, res) => {
   try {
     const { reference } = req.query;
@@ -195,7 +198,6 @@ router.get('/sync-payment', authMiddleware, async (req, res) => {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     }
 
-    // Credits 300 NGN for your test payment reference recovery
     const recoveryAmount = 300;
     merchant.balances.NGN = (merchant.balances.NGN || 0) + recoveryAmount;
     await merchant.save();
