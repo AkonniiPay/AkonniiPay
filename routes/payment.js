@@ -129,7 +129,6 @@ router.post('/initialize', async (req, res) => {
 
     const txRef = 'TRX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
 
-    // Return reference and public key for Paystack popup initialization
     return res.json({
       success: true,
       reference: txRef,
@@ -139,6 +138,46 @@ router.post('/initialize', async (req, res) => {
   } catch (err) {
     console.error("Payment initialization error:", err);
     return res.status(500).json({ success: false, message: "Error initializing payment transaction." });
+  }
+});
+
+// POST /api/payment/verify-and-credit (Automated client/gateway success callback)
+router.post('/verify-and-credit', async (req, res) => {
+  try {
+    const { reference, amount, currency, linkId } = req.body;
+
+    const link = await PaymentLink.findById(linkId);
+    if (!link) {
+      return res.status(404).json({ success: false, message: "Payment link not found." });
+    }
+
+    const merchantId = link.userId || link.user;
+    const User = require('../models/User');
+    const merchant = await User.findById(merchantId);
+
+    if (!merchant) {
+      return res.status(404).json({ success: false, message: "Merchant not found." });
+    }
+
+    const curr = currency || link.currency || 'NGN';
+    const creditAmount = Number(amount) || Number(link.amount);
+
+    if (!merchant.balances) {
+      merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+    }
+
+    // Automatically add funds to the merchant's platform balance
+    merchant.balances[curr] = (merchant.balances[curr] || 0) + creditAmount;
+    await merchant.save();
+
+    return res.json({
+      success: true,
+      message: `Successfully credited ${curr} ${creditAmount} to merchant balance.`,
+      balances: merchant.balances
+    });
+  } catch (err) {
+    console.error("Verify and credit error:", err);
+    return res.status(500).json({ success: false, message: "Server error updating balance." });
   }
 });
 

@@ -139,9 +139,30 @@
                 amount: Math.round(finalAmount * 100),
                 currency: link.currency || 'NGN',
                 ref: initData.reference,
-                callback: function(response) {
-                  alert('Payment successful! Reference: ' + response.reference);
-                  window.location.reload();
+                callback: async function(response) {
+                  try {
+                    const creditRes = await fetch('/api/payment/verify-and-credit', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        reference: response.reference,
+                        amount: finalAmount,
+                        currency: link.currency || 'NGN',
+                        linkId: link._id
+                      })
+                    });
+
+                    const creditData = await creditRes.json();
+                    if (creditRes.ok && creditData.success) {
+                      alert('Payment successful! Funds have been credited to your merchant account.');
+                      window.location.href = '/dashboard';
+                    } else {
+                      alert('Payment successful, but failed to sync balance automatically.');
+                    }
+                  } catch (err) {
+                    console.error("Auto-credit error:", err);
+                    alert('Payment successful, but network error updating balance.');
+                  }
                 },
                 onClose: function() {
                   payBtn.disabled = false;
