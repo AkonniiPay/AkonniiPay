@@ -132,9 +132,9 @@
 
             const initData = await initRes.json();
 
-            if (initRes.ok && initData.reference) {
+            if (initRes.ok && initData.success) {
               let handler = PaystackPop.setup({
-                key: initData.publicKey || 'pk_live_placeholder',
+                key: initData.publicKey,
                 email: email,
                 amount: Math.round(finalAmount * 100),
                 currency: link.currency || 'NGN',

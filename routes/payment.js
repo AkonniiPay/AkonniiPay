@@ -119,8 +119,7 @@ router.get('/link-by-slug/:slug', async (req, res) => {
 // POST /api/payment/initialize (Public checkout payment initialization)
 router.post('/initialize', async (req, res) => {
   try {
-    const { linkId, slug, email, name, amount } = req.body;
-
+    const { linkId, slug } = req.body;
     const query = slug ? { slug } : { _id: linkId };
     const link = await PaymentLink.findOne(query);
 
@@ -129,9 +128,9 @@ router.post('/initialize', async (req, res) => {
     }
 
     const txRef = 'AKP_' + crypto.randomBytes(6).toString('hex').toUpperCase();
-
-    // Pass the actual Paystack Public Key from environment variables
-    const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUB_KEY || '';
+    
+    // Fallback to a hardcoded public key test string if env variable is missing, preventing crashes
+    const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUB_KEY || 'pk_test_placeholder_key';
 
     return res.json({
       success: true,
@@ -141,7 +140,7 @@ router.post('/initialize', async (req, res) => {
     });
   } catch (err) {
     console.error("Payment initialization error:", err);
-    return res.status(500).json({ success: false, message: "Error initializing payment transaction." });
+    return res.status(500).json({ success: false, message: "Server error initializing payment." });
   }
 });
 
@@ -186,7 +185,6 @@ router.post('/verify-and-credit', async (req, res) => {
 // GET /api/payment/sync-payment (Emergency recovery fallback)
 router.get('/sync-payment', authMiddleware, async (req, res) => {
   try {
-    const { reference } = req.query;
     const userId = req.user.id || req.user._id;
     const merchant = await User.findById(userId);
 
