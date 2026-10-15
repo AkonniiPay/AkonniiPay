@@ -10,7 +10,7 @@ router.post('/paystack', async (req, res) => {
     try {
         const secretKey = process.env.PAYSTACK_SECRET_KEY;
         if (!secretKey) {
-            console.error('[WEBHOOK] Missing PAYSTACK_SECRET_KEY environment variable');
+            console.error('[WEBHOOK] Missing PAYSTACK_SECRET_KEY');
             return res.status(500).send('Configuration error');
         }
 
@@ -27,14 +27,12 @@ router.post('/paystack', async (req, res) => {
             const data = event.data;
             const reference = data.reference;
             const amountPaid = data.amount / 100;
-            const currency = data.currency || 'NGN';
+            const currency = (data.currency || 'NGN').toUpperCase();
             const metadata = data.metadata || {};
             const customerEmail = data.customer ? data.customer.email : null;
 
             const existingTx = await Transaction.findOne({ reference });
-            if (existingTx) {
-                return res.status(200).send('Event already processed');
-            }
+            if (existingTx) return res.status(200).send('Event already processed');
 
             let merchant = null;
             if (metadata.merchantId) {
@@ -44,11 +42,10 @@ router.post('/paystack', async (req, res) => {
             }
 
             if (merchant) {
-                const netAmount = amountPaid * 0.96;
+                const netAmount = amountPaid * 0.96; // 4% fee
 
                 merchant.balances = merchant.balances || { NGN: 0, USD: 0, GBP: 0 };
-                const currKey = currency.toUpperCase();
-                merchant.balances[currKey] = (merchant.balances[currKey] || 0) + netAmount;
+                merchant.balances[currency] = (merchant.balances[currency] || 0) + netAmount;
                 merchant.walletBalance = (merchant.walletBalance || 0) + netAmount;
 
                 await merchant.save();
@@ -57,7 +54,7 @@ router.post('/paystack', async (req, res) => {
                     try {
                         await PaymentLink.findByIdAndUpdate(metadata.linkId, { $inc: { paidCount: 1 } });
                     } catch (linkErr) {
-                        console.warn('[WEBHOOK] Payment link update notice:', linkErr.message);
+                        console.warn('[WEBHOOK] Link update notice:', linkErr.message);
                     }
                 }
 
@@ -65,22 +62,20 @@ router.post('/paystack', async (req, res) => {
                     user: merchant._id,
                     type: 'deposit',
                     amount: netAmount,
-                    currency: currKey,
+                    currency: currency,
                     status: 'completed',
                     reference: reference,
-                    description: metadata.linkId 
-                        ? `Payment Link Funded: ${currency} ${amountPaid} from ${metadata.guestName || customerEmail}`
-                        : `Paystack Direct Transfer Funded: ${currency} ${amountPaid}`
+                    description: `Paystack Deposit: ${currency} ${amountPaid}`
                 });
-
                 await transaction.save();
-                console.log(`[PAYSTACK DEPOSIT] Credited ₦${netAmount} to ${merchant.email}`);
+
+                console.log(`[PAYSTACK DEPOSIT] Credited ${netAmount} ${currency} to ${merchant.email}`);
             }
         }
 
         res.sendStatus(200);
     } catch (err) {
-        console.error('Paystack Webhook processing error:', err.message || err);
+        console.error('Paystack Webhook error:', err.message || err);
         res.status(500).send('Server error');
     }
 });
@@ -106,9 +101,7 @@ router.post('/flutterwave', async (req, res) => {
             const customerEmail = data.customer ? data.customer.email : null;
 
             const existingTx = await Transaction.findOne({ reference });
-            if (existingTx) {
-                return res.status(200).send('Event already processed');
-            }
+            if (existingTx) return res.status(200).send('Event already processed');
 
             if (customerEmail) {
                 const merchant = await User.findOne({ email: customerEmail.toLowerCase().trim() });
@@ -129,10 +122,10 @@ router.post('/flutterwave', async (req, res) => {
                         currency: currency,
                         status: 'completed',
                         reference: reference,
-                        description: `Flutterwave Virtual Bank Transfer: ${currency} ${amountPaid}`
+                        description: `Flutterwave Bank Transfer: ${currency} ${amountPaid}`
                     });
-
                     await transaction.save();
+
                     console.log(`[FLUTTERWAVE DEPOSIT] Credited ${netAmount} ${currency} to ${merchant.email}`);
                 }
             }
