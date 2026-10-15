@@ -87,7 +87,7 @@
         
         <!-- NGN Card -->
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" style="cursor: pointer;" onclick="openCardModal('NGN')">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="ngnAccountCard" style="cursor: pointer;">
             <span class="badge bg-warning text-dark w-auto align-self-start mb-2">NGN Account</span>
             <h6 class="fw-bold mb-1" id="ngnBankName">Wema Bank</h6>
             <p class="text-muted small mb-1">Account No: <strong id="ngnAccNo">9961594893</strong></p>
@@ -98,7 +98,7 @@
 
         <!-- USD Card -->
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" style="cursor: pointer;" onclick="openCardModal('USD')">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="usdAccountCard" style="cursor: pointer;">
             <span class="badge bg-primary w-auto align-self-start mb-2">USD Account</span>
             <h6 class="fw-bold mb-1">Community Federal Savings Bank</h6>
             <p class="text-muted small mb-1">Routing: <strong>026073150</strong> | Acc: <strong>3094882104</strong></p>
@@ -109,7 +109,7 @@
 
         <!-- GBP Card -->
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" style="cursor: pointer;" onclick="openCardModal('GBP')">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="gbpAccountCard" style="cursor: pointer;">
             <span class="badge bg-dark w-auto align-self-start mb-2">GBP Account</span>
             <h6 class="fw-bold mb-1">Barclays Bank UK</h6>
             <p class="text-muted small mb-1">Sort Code: <strong>20-04-15</strong> | Acc: <strong>70482910</strong></p>
@@ -120,7 +120,7 @@
 
         <!-- EUR Card -->
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" style="cursor: pointer;" onclick="openCardModal('EUR')">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="eurAccountCard" style="cursor: pointer;">
             <span class="badge bg-success w-auto align-self-start mb-2">EUR Account</span>
             <h6 class="fw-bold mb-1">BNP Paribas</h6>
             <p class="text-muted small mb-1">IBAN: <strong>FR76300040000...</strong></p>
@@ -214,9 +214,9 @@
           if (ngnAcc && ngnAcc.accountNumber) {
             document.getElementById('ngnBankName').innerText = ngnAcc.bankName || "Wema Bank";
             document.getElementById('ngnAccNo').innerText = ngnAcc.accountNumber;
-          } else {
-            document.getElementById('ngnAccNo').innerText = "9961594893";
           }
+
+          setupCardModals(userData);
         }
       } catch (err) {
         console.error("Dashboard error:", err);
@@ -268,58 +268,86 @@
       }
     }
 
-    function openCardModal(currency) {
-      const fullName = userData?.fullName || "Luqman Abiodun Oyewole";
-      const va = userData?.virtualAccounts || {};
+    function setupCardModals(user) {
+      const fullName = user.fullName || "Luqman Abiodun Oyewole";
+      const va = user.virtualAccounts || {};
 
-      const modalTitle = document.getElementById('modalBankTitle');
-      const modalBody = document.getElementById('modalBankBody');
+      const ngn = va.NGN || {};
+      const usd = va.USD || {};
+      const gbp = va.GBP || {};
+      const eur = va.EUR || {};
 
-      if (currency === 'NGN') {
-        const ngn = va.NGN || {};
-        modalTitle.innerText = 'NGN Dedicated Virtual Account';
-        modalBody.innerHTML = `
+      document.getElementById('ngnAccountCard')?.addEventListener('click', () => {
+        openAccountModal('NGN Dedicated Virtual Account', `
           <div class="mb-3"><label class="text-muted small fw-semibold">Account Holder Name</label><div class="fw-bold fs-5 text-primary">${fullName}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Bank Name</label><div class="fw-bold text-dark">${ngn.bankName || 'Wema Bank'}</div></div>
-          <div class="mb-3"><label class="text-muted small fw-semibold">Account Number / IBAN</label><div class="p-2 bg-light rounded border fw-bold font-monospace fs-5">${ngn.accountNumber || '9961594893'}</div></div>
+          <div class="mb-3"><label class="text-muted small fw-semibold">Account Number</label><div class="p-2 bg-light rounded border fw-bold font-monospace fs-5">${ngn.accountNumber || '9961594893'}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Bank Code</label><div class="p-2 bg-light rounded border fw-bold font-monospace">035 (Wema Bank)</div></div>
-          <div><label class="text-muted small fw-semibold">Bank Address / Clearing</label><div class="fw-semibold text-secondary">Central Bank of Nigeria NIBSS Direct Deposit</div></div>
-        `;
-      } else if (currency === 'USD') {
-        const usd = va.USD || {};
-        modalTitle.innerText = 'USD Dedicated Virtual Account';
-        modalBody.innerHTML = `
+          <div><label class="text-muted small fw-semibold">Clearing</label><div class="fw-semibold text-secondary">Central Bank of Nigeria NIBSS Direct Deposit</div></div>
+        `);
+      });
+
+      document.getElementById('usdAccountCard')?.addEventListener('click', () => {
+        openAccountModal('USD Dedicated Virtual Account', `
           <div class="mb-3"><label class="text-muted small fw-semibold">Account Holder Name</label><div class="fw-bold fs-5 text-primary">${fullName}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Bank Name</label><div class="fw-bold text-dark">${usd.bankName || 'Community Federal Savings Bank'}</div></div>
-          <div class="mb-3"><label class="text-muted small fw-semibold">Account Number / IBAN</label><div class="p-2 bg-light rounded border fw-bold font-monospace fs-5">${usd.accountNumber || '3094882104'}</div></div>
+          <div class="mb-3"><label class="text-muted small fw-semibold">Account Number</label><div class="p-2 bg-light rounded border fw-bold font-monospace fs-5">${usd.accountNumber || '3094882104'}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Routing Number</label><div class="p-2 bg-light rounded border fw-bold font-monospace">${usd.routingNumber || '026073150'}</div></div>
           <div><label class="text-muted small fw-semibold">Bank Address</label><div class="fw-semibold text-secondary">${usd.address || '89 5th Ave, New York, NY 10003, USA'}</div></div>
-        `;
-      } else if (currency === 'GBP') {
-        const gbp = va.GBP || {};
-        modalTitle.innerText = 'GBP Dedicated Virtual Account';
-        modalBody.innerHTML = `
+        `);
+      });
+
+      document.getElementById('gbpAccountCard')?.addEventListener('click', () => {
+        openAccountModal('GBP Dedicated Virtual Account', `
           <div class="mb-3"><label class="text-muted small fw-semibold">Account Holder Name</label><div class="fw-bold fs-5 text-primary">${fullName}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Bank Name</label><div class="fw-bold text-dark">${gbp.bankName || 'Barclays Bank UK'}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Account Number</label><div class="p-2 bg-light rounded border fw-bold font-monospace fs-5">${gbp.accountNumber || '70482910'}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Sort Code</label><div class="p-2 bg-light rounded border fw-bold font-monospace">${gbp.sortCode || '20-04-15'}</div></div>
           <div><label class="text-muted small fw-semibold">Bank Address</label><div class="fw-semibold text-secondary">${gbp.address || '1 Churchill Place, London, UK'}</div></div>
-        `;
-      } else if (currency === 'EUR') {
-        const eur = va.EUR || {};
-        modalTitle.innerText = 'EUR Dedicated Virtual Account';
-        modalBody.innerHTML = `
+        `);
+      });
+
+      document.getElementById('eurAccountCard')?.addEventListener('click', () => {
+        openAccountModal('EUR Dedicated Virtual Account', `
           <div class="mb-3"><label class="text-muted small fw-semibold">Account Holder Name</label><div class="fw-bold fs-5 text-primary">${fullName}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">Bank Name</label><div class="fw-bold text-dark">${eur.bankName || 'BNP Paribas'}</div></div>
-          <div class="mb-3"><label class="text-muted small fw-semibold">IBAN</label><div class="p-2 bg-light rounded border fw-bold font-monospace fs-5">${eur.iban || 'FR763000400001002930'}</div></div>
+          <div class="mb-3"><label class="text-muted small fw-semibold">IBAN</label><div class="p-2 bg-light rounded border fw-bold font-monospace fs-5">${eur.iban || 'FR76300040000...'}</div></div>
           <div class="mb-3"><label class="text-muted small fw-semibold">BIC / SWIFT</label><div class="p-2 bg-light rounded border fw-bold font-monospace">${eur.bic || 'BNPAFR2PPXX'}</div></div>
           <div><label class="text-muted small fw-semibold">Bank Address</label><div class="fw-semibold text-secondary">${eur.address || '16 Blvd des Italiens, Paris, FR'}</div></div>
-        `;
-      }
+        `);
+      });
+    }
 
+    function openAccountModal(title, htmlContent) {
+      document.getElementById('modalBankTitle').innerText = title;
+      document.getElementById('modalBankBody').innerHTML = htmlContent;
       const modal = new bootstrap.Modal(document.getElementById('bankDetailModal'));
       modal.show();
     }
+
+    document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return alert('Please log in first.');
+
+      const reference = prompt("Enter your Transaction Reference Code (e.g., AKP_...):");
+      if (!reference || !reference.trim()) return;
+
+      try {
+        const res = await fetch(`/api/payment/sync-payment?reference=${encodeURIComponent(reference.trim())}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`Success! Payment of ₦${data.amount || 300} synchronized. Balance updated.`);
+          window.location.reload();
+        } else {
+          alert(`Sync Failed: ${data.message || 'Transaction reference not found.'}`);
+        }
+      } catch (err) {
+        console.error("Sync error:", err);
+        alert('Error communicating with payment recovery service.');
+      }
+    });
 
     document.getElementById('signOutBtn')?.addEventListener('click', () => {
       localStorage.clear();
