@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const PaymentLink = require('../models/PaymentLink');
 
-// POST /api/webhook/paystack
+// 1. POST /api/webhook/paystack
 router.post('/paystack', async (req, res) => {
     try {
         const secretKey = process.env.PAYSTACK_SECRET_KEY;
@@ -14,7 +14,6 @@ router.post('/paystack', async (req, res) => {
             return res.status(500).send('Configuration error');
         }
 
-        // Verify Paystack HMAC SHA512 signature securely
         const hash = crypto.createHmac('sha512', secretKey).update(JSON.stringify(req.body)).digest('hex');
 
         if (hash !== req.headers['x-paystack-signature']) {
@@ -27,19 +26,17 @@ router.post('/paystack', async (req, res) => {
         if (event.event === 'charge.success') {
             const data = event.data;
             const reference = data.reference;
-            const amountPaid = data.amount / 100; // Convert kobo to Naira
+            const amountPaid = data.amount / 100;
             const currency = data.currency || 'NGN';
             const metadata = data.metadata || {};
             const customerEmail = data.customer ? data.customer.email : null;
 
-            // Prevent duplicate processing
             const existingTx = await Transaction.findOne({ reference });
             if (existingTx) {
                 return res.status(200).send('Event already processed');
             }
 
             let merchant = null;
-
             if (metadata.merchantId) {
                 merchant = await User.findById(metadata.merchantId);
             } else if (customerEmail) {
@@ -47,7 +44,7 @@ router.post('/paystack', async (req, res) => {
             }
 
             if (merchant) {
-                const netAmount = amountPaid * 0.96; // 4% processing fee deduction
+                const netAmount = amountPaid * 0.96;
 
                 merchant.balances = merchant.balances || { NGN: 0, USD: 0, GBP: 0 };
                 const currKey = currency.toUpperCase();
@@ -73,18 +70,78 @@ router.post('/paystack', async (req, res) => {
                     reference: reference,
                     description: metadata.linkId 
                         ? `Payment Link Funded: ${currency} ${amountPaid} from ${metadata.guestName || customerEmail}`
-                        : `Direct Bank Transfer (DVA) Funded: ${currency} ${amountPaid}`
+                        : `Paystack Direct Transfer Funded: ${currency} ${amountPaid}`
                 });
 
                 await transaction.save();
-                console.log(`[DEPOSIT CONFIRMED] Credited ₦${netAmount} (Net) to ${merchant.email}`);
+                console.log(`[PAYSTACK DEPOSIT] Credited ₦${netAmount} to ${merchant.email}`);
             }
         }
 
         res.sendStatus(200);
     } catch (err) {
-        console.error('Webhook processing error:', err.message || err);
+        console.error('Paystack Webhook processing error:', err.message || err);
         res.status(500).send('Server error');
+    }
+});
+
+// 2. POST /api/webhook/flutterwave
+router.post('/flutterwave', async (req, res) => {
+    try {
+        const signature = req.headers['verif-hash'];
+        const secretHash = process.env.FLUTTERWAVE_SECRET_HASH || "fe33731418a0832bebf091f789cd695a";
+
+        if (!signature || signature !== secretHash) {
+            console.error('[FLW WEBHOOK] Signature mismatch');
+            return res.status(401).send('Unauthorized webhook signature');
+        }
+
+        const payload = req.body;
+
+        if (payload.event === 'charge.completed' && payload.data && payload.data.status === 'successful') {
+            const data = payload.data;
+            const reference = data.tx_ref || `FLW_${data.id}`;
+            const amountPaid = data.amount;
+            const currency = (data.currency || 'NGN').toUpperCase();
+            const customerEmail = data.customer ? data.customer.email : null;
+
+            const existingTx = await Transaction.findOne({ reference });
+            if (existingTx) {
+                return res.status(200).send('Event already processed');
+            }
+
+            if (customerEmail) {
+                const merchant = await User.findOne({ email: customerEmail.toLowerCase().trim() });
+
+                if (merchant) {
+                    const netAmount = amountPaid * 0.96;
+
+                    merchant.balances = merchant.balances || { NGN: 0, USD: 0, GBP: 0 };
+                    merchant.balances[currency] = (merchant.balances[currency] || 0) + netAmount;
+                    merchant.walletBalance = (merchant.walletBalance || 0) + netAmount;
+
+                    await merchant.save();
+
+                    const transaction = new Transaction({
+                        user: merchant._id,
+                        type: 'deposit',
+                        amount: netAmount,
+                        currency: currency,
+                        status: 'completed',
+                        reference: reference,
+                        description: `Flutterwave Virtual Bank Transfer: ${currency} ${amountPaid}`
+                    });
+
+                    await transaction.save();
+                    console.log(`[FLUTTERWAVE DEPOSIT] Credited ${netAmount} ${currency} to ${merchant.email}`);
+                }
+            }
+        }
+
+        res.status(200).send("Webhook Processed");
+    } catch (err) {
+        console.error("Flutterwave Webhook Error:", err.message || err);
+        res.status(500).send("Server Error");
     }
 });
 
