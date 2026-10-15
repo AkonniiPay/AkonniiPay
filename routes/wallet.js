@@ -1,32 +1,29 @@
 const router = require('express').Router();
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
-const PaymentLink = require('../models/PaymentLink');
 const auth = require('../middleware/auth');
 
-// Live market exchange rates matching frontend
+// Live market exchange rates
 const exchangeRates = { USD: 1350.65, GBP: 1780.20, EUR: 1495.50, NGN: 1 };
 
-// Helper to calculate withdrawal fees (e.g., 1.5% or minimum fee)
+// Helper to calculate withdrawal fees
 function calculateWithdrawalFee(amount, currency) {
   const num = Number(amount);
   if (currency === 'NGN') {
-    // 1.5% fee or minimum ₦50
     return Math.max(num * 0.015, 50);
   }
-  // Foreign currency fee (e.g. $1 or 2%)
   return Math.max(num * 0.02, 1);
 }
 
 // 1. GET USER WALLET & ACCOUNT DETAILS
 router.get('/', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-password');
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId).select('-password');
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        // Synchronize legacy structures if necessary
         if (!user.balances) {
             user.balances = { NGN: user.walletBalance || 0, USD: 0, GBP: 0, EUR: 0 };
             await user.save();
@@ -53,7 +50,11 @@ router.get('/', auth, async (req, res) => {
 // 2. GET TRANSACTION HISTORY
 router.get('/transactions', auth, async (req, res) => {
     try {
-        const transactions = await Transaction.find({ user: req.user.id }).sort({ createdAt: -1 });
+        const userId = req.user.id || req.user._id;
+        const transactions = await Transaction.find({ 
+          $or: [{ user: userId }, { userId: userId }] 
+        }).sort({ createdAt: -1 });
+        
         res.json({ count: transactions.length, transactions });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -68,7 +69,8 @@ router.post('/resolve-account', auth, async (req, res) => {
             return res.status(400).json({ message: 'Enter a valid 10-digit account number.' });
         }
 
-        const user = await User.findById(req.user.id);
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId);
         res.json({
             accountNumber,
             bankName,
@@ -93,7 +95,8 @@ router.post('/withdraw', auth, async (req, res) => {
             return res.status(400).json({ message: 'Bank name and account number are required.' });
         }
 
-        const user = await User.findById(req.user.id);
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
@@ -110,15 +113,15 @@ router.post('/withdraw', auth, async (req, res) => {
             return res.status(400).json({ message: `Insufficient ${curr} wallet balance. Available: ${curr === 'NGN' ? '₦' : '$'}${currentBalance}` });
         }
 
-        // Calculate withdrawal processing fee
+        // Calculate withdrawal fee
         const fee = calculateWithdrawalFee(requestedAmount, curr);
         const netPayoutAmount = requestedAmount - fee;
 
         if (netPayoutAmount <= 0) {
-            return res.status(400).json({ message: `Amount is too low to cover withdrawal processing fee (${curr} ${fee}).` });
+            return res.status(400).json({ message: `Amount is too low to cover processing fee (${curr} ${fee}).` });
         }
 
-        // Deduct full requested amount (amount + fee covered inside it) from user's balance
+        // Deduct full amount from user's platform balance
         user.balances[curr] -= requestedAmount;
         if (curr === 'NGN') user.walletBalance = user.balances.NGN;
         await user.save();
@@ -131,15 +134,18 @@ router.post('/withdraw', auth, async (req, res) => {
 
         const reference = 'WD_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
+        // Create transaction with all required schema fields (userId, gateway, user, type)
         const transaction = new Transaction({
-            user: user._id,
+            user: userId,
+            userId: userId,
+            gateway: 'Bank Transfer',
             type: 'withdrawal',
             amount: requestedAmount,
             fee: fee,
             netAmount: netPayoutAmount,
             currency: curr,
             status: 'completed',
-            reference,
+            reference: reference,
             description: `Withdrawal of ${curr} ${requestedAmount} (Fee: ${curr} ${fee.toFixed(2)}, Net Payout: ₦${finalNairaPayout.toLocaleString()}) to ${accountName || user.name} (${bankName} - ${accountNumber})`
         });
 
@@ -148,23 +154,27 @@ router.post('/withdraw', auth, async (req, res) => {
         res.json({
             success: true,
             message: `Successfully processed withdrawal of ${curr} ${requestedAmount.toLocaleString()}! Fee deducted: ${curr} ${fee.toFixed(2)}. Net payout: ₦${finalNairaPayout.toLocaleString()} sent to ${bankName} (${accountNumber}).`,
-            reference,
+            reference: reference,
             balances: user.balances
         });
     } catch (err) {
-        console.error("Withdrawal processing error:", err);
-        res.status(500).json({ error: err.message });
+        console.error("Withdrawal error:", err);
+        res.status(500).json({ message: err.message || "Error processing withdrawal." });
     }
 });
 
-// 5. BALANCE RE-CALIBRATION ROUTE (Fixes existing ₦900 balance down to ₦600 base amount)
+// 5. RECALIBRATE BALANCE ROUTE
 router.post('/recalibrate-balance', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found.' });
 
-        // Reset NGN balance to 600 as required (3 payments x 200 base amount)
-        user.balances.NGN = 600;
+        if (!user.balances) {
+            user.balances = { NGN: 600, USD: 0, GBP: 0, EUR: 0 };
+        } else {
+            user.balances.NGN = 600;
+        }
         user.walletBalance = 600;
         await user.save();
 
