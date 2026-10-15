@@ -15,14 +15,15 @@ router.post('/register', async (req, res) => {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // Check existing user
+    // Check if user already exists
     let user = await User.findOne({ email: cleanEmail });
     if (user) {
       return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
     }
 
     // Split Full Name into First and Last Name
-    const nameParts = (name || 'AkonniiPay Merchant').trim().split(' ');
+    const cleanName = (name || 'Luqman Abiodun Oyewole').trim();
+    const nameParts = cleanName.split(' ');
     const firstName = nameParts[0] || 'Merchant';
     const lastName = nameParts.slice(1).join(' ') || 'User';
 
@@ -30,16 +31,18 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Build User Object with all standard schema properties
+    // Build User Object with EXACT Mongoose Schema Keys: fullName & phoneNumber
     user = new User({
-      name: (name || 'AkonniiPay Merchant').trim(),
+      fullName: cleanName,
+      name: cleanName,
       firstName: firstName,
       lastName: lastName,
       email: cleanEmail,
       password: hashedPassword,
       address: address || 'Not provided',
-      phone: phone || '+2340000000000',
-      occupation: occupation || 'Business Owner',
+      phoneNumber: phone || '+2348080567034',
+      phone: phone || '+2348080567034',
+      occupation: occupation || 'Software Developer',
       kycStatus: 'Pending Verification',
       balances: { NGN: 0, USD: 0, GBP: 0 },
       virtualAccounts: {}
@@ -57,9 +60,7 @@ router.post('/register', async (req, res) => {
       message: 'Account created successfully!',
       user: {
         id: user._id,
-        name: user.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        fullName: user.fullName,
         email: user.email,
         kycStatus: user.kycStatus
       }
@@ -104,9 +105,7 @@ router.post('/login', async (req, res) => {
       message: 'Logged in successfully!',
       user: {
         id: user._id,
-        name: user.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        fullName: user.fullName || user.name,
         email: user.email,
         kycStatus: user.kycStatus
       }
