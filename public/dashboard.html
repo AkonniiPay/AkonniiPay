@@ -4,16 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AkonniiPay - Dashboard</title>
-  <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="bg-light">
 
   <div class="d-flex" id="wrapper">
-    <!-- Sidebar Navigation -->
+    <!-- Sidebar -->
     <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
       <h3 class="fw-bold fs-4 mb-4 text-primary">AkonniiPay</h3>
       <ul class="nav nav-pills flex-column mb-auto">
@@ -35,7 +33,7 @@
       </ul>
     </div>
 
-    <!-- Page Content -->
+    <!-- Main Page Content -->
     <div id="page-content-wrapper" class="w-100 p-4">
       
       <!-- Top Bar Header -->
@@ -49,7 +47,7 @@
         </div>
       </div>
 
-      <!-- Live Market Ticker -->
+      <!-- Exchange Rates Banner -->
       <div class="alert alert-dark d-flex justify-content-between align-items-center py-2 px-3 mb-4 rounded-3 text-success">
         <small class="fw-semibold"><i class="bi bi-graph-up-arrow me-2"></i>Live Market Exchange Rates:</small>
         <small class="font-monospace">$1 = ₦1,350.65 | £1 = ₦1,780.20 | €1 = ₦1,495.50</small>
@@ -83,46 +81,57 @@
         </div>
       </div>
 
-      <!-- Virtual Accounts Section -->
+      <!-- Virtual Accounts & Deposit Addresses -->
       <h4 class="fw-bold mb-3">Your Dedicated Virtual Accounts & Deposit Addresses</h4>
       <div class="row g-3 mb-4">
         
+        <!-- NGN Dedicated Card -->
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="ngnAccountCard" style="cursor: pointer;">
+            <span class="badge bg-warning text-dark w-auto align-self-start mb-2">NGN Account</span>
+            <h6 class="fw-bold mb-1" id="ngnBankName">Wema Bank</h6>
+            <p class="text-muted small mb-1">Account No: <strong id="ngnAccNo">Verify KYC to Generate</strong></p>
+            <p class="text-muted small mb-0">Name: <span id="ngnAccName" class="fw-semibold">Merchant Name</span></p>
+            <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
+          </div>
+        </div>
+
         <!-- USD Card -->
-        <div class="col-md-4">
-          <div class="card border-0 shadow-sm p-3 rounded-3 account-card" style="cursor: pointer;" onclick="openAccountModal('USD', 'Community Federal Savings Bank', '3094882104', '026073150', '89 5th Ave, New York, NY 10003, USA')">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="usdAccountCard" style="cursor: pointer;">
             <span class="badge bg-primary w-auto align-self-start mb-2">USD Account</span>
             <h6 class="fw-bold mb-1">Community Federal Savings Bank</h6>
-            <p class="text-muted small mb-1">Routing: <strong>026073150</strong> | Account: <strong>3094882104</strong></p>
-            <p class="text-muted small mb-0">Address: 89 5th Ave, New York, NY 10003, USA</p>
+            <p class="text-muted small mb-1">Routing: <strong>026073150</strong> | Acc: <strong>3094882104</strong></p>
+            <p class="text-muted small mb-0">Address: 89 5th Ave, NY 10003, USA</p>
             <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
           </div>
         </div>
 
         <!-- GBP Card -->
-        <div class="col-md-4">
-          <div class="card border-0 shadow-sm p-3 rounded-3 account-card" style="cursor: pointer;" onclick="openAccountModal('GBP', 'Barclays Bank UK', '70482910', '20-04-15', '1 Churchill Place, London E14 5HP, UK')">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="gbpAccountCard" style="cursor: pointer;">
             <span class="badge bg-dark w-auto align-self-start mb-2">GBP Account</span>
             <h6 class="fw-bold mb-1">Barclays Bank UK</h6>
-            <p class="text-muted small mb-1">Sort Code: <strong>20-04-15</strong> | Account: <strong>70482910</strong></p>
-            <p class="text-muted small mb-0">Address: 1 Churchill Place, London E14 5HP, UK</p>
+            <p class="text-muted small mb-1">Sort Code: <strong>20-04-15</strong> | Acc: <strong>70482910</strong></p>
+            <p class="text-muted small mb-0">Address: 1 Churchill Place, London, UK</p>
             <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
           </div>
         </div>
 
         <!-- EUR Card -->
-        <div class="col-md-4">
-          <div class="card border-0 shadow-sm p-3 rounded-3 account-card" style="cursor: pointer;" onclick="openAccountModal('EUR', 'BNP Paribas', 'FR7630004000011234567890143', 'BNPAFRPP', '16 Boulevard des Italiens, 75009 Paris, France')">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="eurAccountCard" style="cursor: pointer;">
             <span class="badge bg-success w-auto align-self-start mb-2">EUR Account</span>
             <h6 class="fw-bold mb-1">BNP Paribas</h6>
-            <p class="text-muted small mb-1">IBAN: <strong>FR7630004000011234567890143</strong></p>
-            <p class="text-muted small mb-0">Address: 16 Boulevard des Italiens, 75009 Paris, France</p>
+            <p class="text-muted small mb-1">IBAN: <strong>FR76300040000...</strong></p>
+            <p class="text-muted small mb-0">Address: 16 Blvd des Italiens, Paris, FR</p>
             <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
           </div>
         </div>
 
       </div>
 
-      <!-- Payment Links Table Section -->
+      <!-- Payment Link Records -->
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="fw-bold mb-0">Payment Link Records</h4>
         <a href="/generate-link.html" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i> Create Link</a>
@@ -142,7 +151,7 @@
             </thead>
             <tbody id="paymentLinksTableBody">
               <tr>
-                <td colspan="6" class="text-center text-muted py-3">Loading payment links...</td>
+                <td colspan="6" class="text-center text-muted py-3">Loading payment link records...</td>
               </tr>
             </tbody>
           </table>
@@ -152,7 +161,7 @@
     </div>
   </div>
 
-  <!-- Dynamic Account Detail Modal -->
+  <!-- Bank Detail Modal -->
   <div class="modal fade" id="bankDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">
@@ -160,9 +169,7 @@
           <h5 class="modal-title fw-bold" id="modalBankTitle">Account Details</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body p-4" id="modalBankBody">
-          <!-- Dynamic details populate here -->
-        </div>
+        <div class="modal-body p-4" id="modalBankBody"></div>
         <div class="modal-footer border-0">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
         </div>
@@ -170,7 +177,6 @@
     </div>
   </div>
 
-  <!-- Bootstrap 5 JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/dashboard.js"></script>
 </body>
