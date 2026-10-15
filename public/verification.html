@@ -68,12 +68,13 @@
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const profileData = await profileRes.json();
+        const user = profileData.user || profileData;
 
-        if (profileData.user) {
-          if (profileData.user.bvn) bvnInput.value = profileData.user.bvn;
-          if (profileData.user.nin) ninInput.value = profileData.user.nin;
+        if (user) {
+          if (user.bvn) bvnInput.value = user.bvn;
+          if (user.nin) ninInput.value = user.nin;
 
-          if (profileData.user.kycStatus === 'Verified') {
+          if (user.kycStatus === 'Verified') {
             badge.className = 'badge bg-success text-white fs-6 px-3 py-2';
             badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Already Verified';
 
@@ -110,7 +111,7 @@
         verifyBtn.innerText = 'Verifying with Banking Registry...';
 
         try {
-          const res = await fetch('/api/kyc/verify', {
+          const res = await fetch('/api/user/verify', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
