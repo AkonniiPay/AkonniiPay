@@ -12,6 +12,8 @@ const UserSchema = new mongoose.Schema({
     kycStatus: { type: String, default: 'Pending Verification' },
     ngnBalance: { type: Number, default: 0 },
     usdBalance: { type: Number, default: 0 },
+    gbpBalance: { type: Number, default: 0 },
+    eurBalance: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
 
