@@ -1,8 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const PaymentLink = require('../models/PaymentLink');
 const authMiddleware = require('../middleware/auth');
+
+// Helper to convert title into a URL slug
+function slugify(text) {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[\s\W-]+/g, '-') // Replace spaces & special chars with hyphen
+    .replace(/^-+|-+$/g, '');  // Trim hyphens
+}
 
 // POST /api/payment/create-link
 router.post('/create-link', authMiddleware, async (req, res) => {
@@ -28,19 +39,22 @@ router.post('/create-link', authMiddleware, async (req, res) => {
 
     const userId = req.user.id || req.user._id;
 
-    // 3. Generate unique reference and default expiration (30 days if not picked)
+    // 3. Generate unique reference, slug, and expiration date
+    const randomHex = crypto.randomBytes(4).toString('hex');
     const reference = 'AKP_' + crypto.randomBytes(6).toString('hex').toUpperCase();
+    const baseSlug = slugify(title) || 'payment';
+    const uniqueSlug = `${baseSlug}-${randomHex}`;
+
     const finalExpiresAt = (expiryDate || expiresAt) 
       ? new Date(expiryDate || expiresAt) 
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    // 4. Pre-generate document ID to build the exact URL required by schema
-    const mongoose = require('mongoose');
+    // 4. Pre-generate document ID and construct checkout URL
     const linkId = new mongoose.Types.ObjectId();
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const checkoutUrl = `${baseUrl}/checkout.html?id=${linkId}`;
 
-    // 5. Construct PaymentLink satisfying all required schema fields
+    // 5. Construct PaymentLink fulfilling all required schema fields + unique slug
     const newLink = new PaymentLink({
       _id: linkId,
       user: userId,
@@ -52,6 +66,7 @@ router.post('/create-link', authMiddleware, async (req, res) => {
       expiresAt: finalExpiresAt,
       expiryDate: finalExpiresAt,
       reference: reference,
+      slug: uniqueSlug,
       url: checkoutUrl,
       shortUrl: checkoutUrl,
       status: 'Active'
