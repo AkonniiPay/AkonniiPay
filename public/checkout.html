@@ -26,9 +26,18 @@
     <div id="checkoutContent" class="d-none">
       <div class="bg-light p-3 rounded-3 mb-3 border">
         <span class="text-muted small fw-semibold d-block mb-1">Payment For</span>
-        <h5 class="fw-bold text-dark mb-3" id="paymentTitle">Loading...</h5>
+        <h5 class="fw-bold text-dark mb-2" id="paymentTitle">Loading...</h5>
+        
+        <div class="d-flex justify-content-between align-items-center text-muted small mb-1">
+          <span>Base Amount</span>
+          <span id="baseAmountText">₦0</span>
+        </div>
+        <div id="feeRow" class="d-flex justify-content-between align-items-center text-muted small mb-2 d-none">
+          <span>Processing Fee (Payer)</span>
+          <span id="feeAmountText">₦0</span>
+        </div>
         <div class="d-flex justify-content-between align-items-center border-top pt-2">
-          <span class="text-muted small">Amount Due</span>
+          <span class="fw-semibold text-dark">Total Due</span>
           <h4 class="fw-bold text-success mb-0" id="paymentAmount">₦0</h4>
         </div>
       </div>
@@ -54,9 +63,11 @@
     </div>
   </div>
 
+  <!-- Load Paystack Inline script if needed -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      // Extract slug from URL path (/pay/:slug) or fallback to query id (?id=...)
       const pathParts = window.location.pathname.split('/');
       const slug = pathParts.includes('pay') ? pathParts[pathParts.indexOf('pay') + 1] : null;
       const urlParams = new URLSearchParams(window.location.search);
@@ -79,11 +90,29 @@
 
         const link = data.link || data;
 
+        // Calculate fee if payer bears fee
+        let baseAmount = Number(link.amount);
+        let finalAmount = baseAmount;
+        let fee = 0;
+
+        // If feeBearer is payer, add standard gateway charge (e.g. ~1.5% + flat fee or flat calculation)
+        if (link.feeBearer === 'payer' || link.chargeBearer === 'payer') {
+          // Example calculation for NGN: 1.5% + ₦100 capped or standard
+          fee = link.currency === 'NGN' ? Math.max(baseAmount * 0.015, 100) : baseAmount * 0.02;
+          finalAmount = baseAmount + fee;
+
+          document.getElementById('baseAmountTextinnerText') = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;
+          document.getElementById('feeAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${fee.toFixed(2)}`;
+          document.getElementById('feeRow').classList.remove('d-none');
+        } else {
+          document.getElementById('baseAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;
+        }
+
         document.getElementById('paymentTitle').innerText = link.title;
-        document.getElementById('paymentAmount').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${Number(link.amount).toLocaleString()} ${link.currency || ''}`;
+        document.getElementById('paymentAmount').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${Math.round(finalAmount).toLocaleString()} ${link.currency || ''}`;
         document.getElementById('checkoutContent').classList.remove('d-none');
 
-        // Handle payment form submission
+        // Handle form submission and initialize payment
         document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
           e.preventDefault();
           const name = document.getElementById('clientName').value;
@@ -91,12 +120,56 @@
 
           const payBtn = document.getElementById('payBtn');
           payBtn.disabled = true;
-          payBtn.innerText = 'Initializing Payment...';
+          payBtn.innerText = 'Initializing Secure Gateway...';
 
-          // Simulate or connect transaction initialization
-          alert(`Proceeding to payment for ${link.title} (${link.currency} ${link.amount}) by ${name}`);
-          payBtn.disabled = false;
-          payBtn.innerText = 'Pay Now';
+          try {
+            // Call backend to initialize transaction
+            const initRes = await fetch('/api/payment/initialize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                linkId: link._id,
+                slug: link.slug,
+                email: email,
+                name: name,
+                amount: finalAmount
+              })
+            });
+
+            const initData = await initRes.json();
+
+            if (initRes.ok && initData.authorization_url) {
+              // Redirect directly to payment gateway URL (Paystack/Flutterwave)
+              window.location.href = initData.authorization_url;
+            } else if (initData.reference) {
+              // If Paystack inline popup is used
+              let handler = PaystackPop.setup({
+                key: initData.publicKey || 'pk_live_placeholder',
+                email: email,
+                amount: Math.round(finalAmount * 100), // in kobo/cents
+                currency: link.currency || 'NGN',
+                ref: initData.reference,
+                callback: function(response) {
+                  alert('Payment successful! Reference: ' + response.reference);
+                  window.location.reload();
+                },
+                onClose: function() {
+                  payBtn.disabled = false;
+                  payBtn.innerText = 'Pay Now';
+                }
+              });
+              handler.openIframe();
+            } else {
+              alert(initData.message || "Error initiating payment gateway.");
+              payBtn.disabled = false;
+              payBtn.innerText = 'Pay Now';
+            }
+          } catch (err) {
+            console.error("Payment init error:", err);
+            alert("Server error connecting to payment gateway.");
+            payBtn.disabled = false;
+            payBtn.innerText = 'Pay Now';
+          }
         });
 
       } catch (err) {
