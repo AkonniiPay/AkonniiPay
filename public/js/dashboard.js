@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
 
-  // 1. Fetch Profile and Virtual Accounts
+  // 1. Fetch Profile, KYC Status, and Dedicated Virtual Accounts
   try {
     const res = await fetch('/api/user/profile', {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -17,14 +17,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = data.user;
 
     if (user) {
-      document.getElementById('ngnBalance').innerText = `₦${(user.balances?.NGN || 0).toLocaleString()}`;
-      document.getElementById('usdBalance').innerText = `$${(user.balances?.USD || 0).toFixed(2)}`;
-      document.getElementById('gbpBalance').innerText = `£${(user.balances?.GBP || 0).toFixed(2)}`;
+      // Set Balances
+      if (document.getElementById('ngnBalance')) document.getElementById('ngnBalance').innerText = `₦${(user.balances?.NGN || 0).toLocaleString()}`;
+      if (document.getElementById('usdBalance')) document.getElementById('usdBalance').innerText = `$${(user.balances?.USD || 0).toFixed(2)}`;
+      if (document.getElementById('gbpBalance')) document.getElementById('gbpBalance').innerText = `£${(user.balances?.GBP || 0).toFixed(2)}`;
 
+      // Update Verified Badge Status
       const badge = document.getElementById('kycStatusBadge');
       if (badge) {
-        badge.innerText = user.kycStatus || 'Pending Verification';
-        badge.className = user.kycStatus === 'Verified' ? 'fw-bold text-success mt-2 mb-0' : 'fw-bold text-warning mt-2 mb-0';
+        if (user.kycStatus === 'Verified') {
+          badge.innerText = 'Verified';
+          badge.className = 'fw-bold text-success mt-2 mb-0';
+        } else {
+          badge.innerText = 'Pending Verification';
+          badge.className = 'fw-bold text-warning mt-2 mb-0';
+        }
       }
 
       // Populate NGN Dedicated Virtual Account Card
@@ -32,11 +39,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       const ngnAcc = user.virtualAccounts?.NGN;
 
       if (ngnAcc && ngnAcc.accountNumber) {
-        document.getElementById('ngnBankName').innerText = ngnAcc.bankName || "Wema Bank";
-        document.getElementById('ngnAccNo').innerText = ngnAcc.accountNumber;
-        document.getElementById('ngnAccName').innerText = ngnAcc.accountName || fullName;
+        if (document.getElementById('ngnBankName')) document.getElementById('ngnBankName').innerText = ngnAcc.bankName || "Wema Bank";
+        if (document.getElementById('ngnAccNo')) document.getElementById('ngnAccNo').innerText = ngnAcc.accountNumber;
+        if (document.getElementById('ngnAccName')) document.getElementById('ngnAccName').innerText = ngnAcc.accountName || fullName;
       } else {
-        document.getElementById('ngnAccName').innerText = fullName;
+        if (document.getElementById('ngnAccName')) document.getElementById('ngnAccName').innerText = fullName;
       }
 
       // Setup Clickable Card Handlers
@@ -46,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Error loading dashboard profile:', err);
   }
 
-  // 2. Fetch Payment Link Records
+  // 2. Fetch Payment Link Records Table
   fetchPaymentLinks(token);
 
   // 3. Sign Out Listener
@@ -112,6 +119,8 @@ function openAccountModal(type, bankName, accountNumber, routingOrSort, accName,
   const modalTitle = document.getElementById('modalBankTitle');
   const modalBody = document.getElementById('modalBankBody');
 
+  if (!modalTitle || !modalBody) return;
+
   modalTitle.innerText = `${type} Dedicated Virtual Account`;
   modalBody.innerHTML = `
     <div class="mb-3">
@@ -143,7 +152,7 @@ function openAccountModal(type, bankName, accountNumber, routingOrSort, accName,
   modal.show();
 }
 
-// Fetch Payment Link Records Table
+// Fetch Payment Link Records Table Helper
 async function fetchPaymentLinks(token) {
   const tableBody = document.getElementById('paymentLinksTableBody');
   if (!tableBody) return;
