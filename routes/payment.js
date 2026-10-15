@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const PaymentLink = require('../models/PaymentLink');
 const authMiddleware = require('../middleware/auth');
 
@@ -14,11 +15,10 @@ router.post('/create-link', authMiddleware, async (req, res) => {
     }
 
     const numAmount = parseFloat(amount);
-    // Currency parsing handles cases like "NGN (Naira - Paystack/Flutterwave)"
     const rawCurr = currency || 'NGN';
     const curr = rawCurr.includes('NGN') ? 'NGN' : rawCurr.substring(0, 3).toUpperCase();
 
-    // 2. Strict validation: Min ₦200 for NGN, $1 for USD/others
+    // 2. Strict amount validation
     if (curr === 'NGN' && (!numAmount || numAmount < 200)) {
       return res.status(400).json({ success: false, message: "Minimum amount for Naira (NGN) is ₦200." });
     }
@@ -26,25 +26,38 @@ router.post('/create-link', authMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: "Minimum amount for foreign currency is $1." });
     }
 
-    // Extract User ID safely from auth middleware
     const userId = req.user.id || req.user._id;
 
-    // 3. Create and Save Link Model
+    // 3. Generate unique reference and default expiration (30 days if not picked)
+    const reference = 'AKP_' + crypto.randomBytes(6).toString('hex').toUpperCase();
+    const finalExpiresAt = (expiryDate || expiresAt) 
+      ? new Date(expiryDate || expiresAt) 
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // 4. Pre-generate document ID to build the exact URL required by schema
+    const mongoose = require('mongoose');
+    const linkId = new mongoose.Types.ObjectId();
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const checkoutUrl = `${baseUrl}/checkout.html?id=${linkId}`;
+
+    // 5. Construct PaymentLink satisfying all required schema fields
     const newLink = new PaymentLink({
+      _id: linkId,
       user: userId,
+      userId: userId,
       title: title.trim(),
       amount: numAmount,
       currency: curr,
       feeBearer: feeBearer || 'payer',
-      expiryDate: expiryDate || expiresAt || null,
+      expiresAt: finalExpiresAt,
+      expiryDate: finalExpiresAt,
+      reference: reference,
+      url: checkoutUrl,
+      shortUrl: checkoutUrl,
       status: 'Active'
     });
 
     await newLink.save();
-
-    // Construct short checkout URL
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const checkoutUrl = `${baseUrl}/checkout.html?id=${newLink._id}`;
 
     return res.json({
       success: true,
@@ -64,13 +77,19 @@ router.post('/create-link', authMiddleware, async (req, res) => {
 router.get('/my-links', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
-    const links = await PaymentLink.find({ user: userId }).sort({ createdAt: -1 });
+    const links = await PaymentLink.find({ 
+      $or: [{ userId: userId }, { user: userId }] 
+    }).sort({ createdAt: -1 });
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const formattedLinks = links.map(link => ({
-      ...link.toObject(),
-      shortUrl: `${baseUrl}/checkout.html?id=${link._id}`
-    }));
+    const formattedLinks = links.map(link => {
+      const obj = link.toObject();
+      const generatedUrl = obj.url || obj.shortUrl || `${baseUrl}/checkout.html?id=${obj._id}`;
+      return {
+        ...obj,
+        shortUrl: generatedUrl
+      };
+    });
 
     return res.json({ success: true, links: formattedLinks });
   } catch (err) {
