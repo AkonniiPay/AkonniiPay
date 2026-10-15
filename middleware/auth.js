@@ -1,25 +1,24 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = function (req, res, next) {
-    // Get token from the Authorization header
-    const authHeader = req.header('Authorization');
+  const authHeader = req.header('Authorization');
+  if (!authHeader) {
+    return res.status(401).json({ success: false, message: 'No token, authorization denied' });
+  }
 
-    // Check if header is missing or doesn't start with Bearer
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'Access denied. No token provided.' });
+  const token = authHeader.replace('Bearer ', '').trim();
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
+    
+    // Support both decoded.id and decoded.user.id format
+    req.user = decoded.user || decoded;
+    if (!req.user.id && req.user._id) {
+      req.user.id = req.user._id;
     }
 
-    try {
-        // Extract token after 'Bearer '
-        const token = authHeader.split(' ')[1];
-
-        // Verify the token using your JWT_SECRET
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        // Attach user info (id and role) to the request object
-        req.user = decoded;
-        next(); // Move on to the actual route handler
-    } catch (err) {
-        res.status(401).json({ message: 'Invalid or expired token.' });
-    }
+    next();
+  } catch (err) {
+    res.status(401).json({ success: false, message: 'Token is not valid' });
+  }
 };
