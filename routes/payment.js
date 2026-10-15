@@ -117,7 +117,7 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   }
 });
 
-// POST /api/payment/initialize (Official Paystack Server-to-Server Initialization)
+// POST /api/payment/initialize (Server-to-Server Initialization: Paystack for NGN, Flutterwave for Foreign Currencies)
 router.post('/initialize', async (req, res) => {
   try {
     const { linkId, slug, email, name, amount } = req.body;
@@ -129,83 +129,133 @@ router.post('/initialize', async (req, res) => {
       return res.status(404).json({ success: false, message: "Payment link not found or inactive." });
     }
 
-    const secretKey = process.env.PAYSTACK_SECRET_KEY;
-    if (!secretKey) {
-      return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
-    }
-
-    const amountInKobo = Math.round(Number(amount) * 100);
+    const currency = (link.currency || 'NGN').toUpperCase();
     const callbackUrl = `${req.protocol}://${req.get('host')}/pay/${link.slug}?status=success`;
+    const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
 
-    const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
-      email: email,
-      amount: amountInKobo,
-      currency: link.currency || 'NGN',
-      callback_url: callbackUrl,
-      metadata: {
-        linkId: link._id.toString(),
-        clientName: name
+    // 1. FOREIGN CURRENCY -> FLUTTERWAVE
+    if (currency !== 'NGN') {
+      const flwSecretKey = process.env.FLW_SECRET_KEY;
+      if (!flwSecretKey) {
+        return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
       }
-    }, {
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
 
-    if (paystackRes.data && paystackRes.data.status) {
-      return res.json({
-        success: true,
-        authorization_url: paystackRes.data.data.authorization_url,
-        reference: paystackRes.data.data.reference
+      const flwRes = await axios.post('https://api.flutterwave.com/v3/payments', {
+        tx_ref: txRef,
+        amount: Number(amount),
+        currency: currency,
+        redirect_url: callbackUrl,
+        customer: {
+          email: email,
+          name: name
+        },
+        meta: {
+          linkId: link._id.toString()
+        },
+        customizations: {
+          title: link.title,
+          description: `Payment for ${link.title}`
+        }
+      }, {
+        headers: {
+          Authorization: `Bearer ${flwSecretKey}`,
+          'Content-Type': 'application/json'
+        }
       });
-    } else {
-      return res.status(400).json({ success: false, message: "Failed to initialize payment with Paystack." });
+
+      if (flwRes.data && flwRes.data.status === 'success') {
+        return res.json({
+          success: true,
+          authorization_url: flwRes.data.data.link,
+          reference: txRef
+        });
+      } else {
+        return res.status(400).json({ success: false, message: "Failed to initialize payment with Flutterwave." });
+      }
+    } 
+    
+    // 2. NGN -> PAYSTACK
+    else {
+      const secretKey = process.env.PAYSTACK_SECRET_KEY;
+      if (!secretKey) {
+        return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
+      }
+
+      const amountInKobo = Math.round(Number(amount) * 100);
+
+      const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
+        email: email,
+        amount: amountInKobo,
+        currency: 'NGN',
+        callback_url: callbackUrl,
+        metadata: {
+          linkId: link._id.toString(),
+          clientName: name
+        }
+      }, {
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (paystackRes.data && paystackRes.data.status) {
+        return res.json({
+          success: true,
+          authorization_url: paystackRes.data.data.authorization_url,
+          reference: paystackRes.data.data.reference
+        });
+      } else {
+        return res.status(400).json({ success: false, message: "Failed to initialize payment with Paystack." });
+      }
     }
   } catch (err) {
-    console.error("Paystack initialize error:", err.response?.data || err.message);
-    return res.status(500).json({ success: false, message: "Error connecting to Paystack gateway." });
+    console.error("Payment initialize error:", err.response?.data || err.message);
+    return res.status(500).json({ success: false, message: "Error connecting to payment gateway." });
   }
 });
 
-// POST /api/payment/webhook (Automated background listener for Paystack charges)
+// POST /api/payment/webhook (Automated background listener for Paystack & Flutterwave)
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
+    let linkId = null;
+    let currency = 'NGN';
 
+    // Paystack Webhook
     if (event && event.event === 'charge.success') {
       const data = event.data;
-      const metadata = data.metadata || {};
-      const linkId = metadata.linkId;
-
-      if (!linkId) {
-        return res.status(400).json({ success: false, message: "Missing linkId in metadata." });
+      linkId = data.metadata?.linkId;
+      currency = data.currency || 'NGN';
+    } 
+    // Flutterwave Webhook
+    else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
+      const data = event.data;
+      if (data && data.status === 'successful') {
+        linkId = data.meta?.linkId;
+        currency = data.currency || 'USD';
       }
+    }
 
+    if (linkId) {
       const link = await PaymentLink.findById(linkId);
-      if (!link) {
-        return res.status(404).json({ success: false, message: "Payment link not found." });
+      if (link) {
+        const merchantId = link.userId || link.user;
+        const merchant = await User.findById(merchantId);
+
+        if (merchant) {
+          const merchantCreditAmount = Number(link.amount); // Base amount only
+
+          if (!merchant.balances) {
+            merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+          }
+
+          merchant.balances[currency] = (merchant.balances[currency] || 0) + merchantCreditAmount;
+          await merchant.save();
+
+          console.log(`[WEBHOOK] Credited base amount ${currency} ${merchantCreditAmount} to merchant ${merchant._id}`);
+        }
       }
-
-      const merchantId = link.userId || link.user;
-      const merchant = await User.findById(merchantId);
-
-      if (!merchant) {
-        return res.status(404).json({ success: false, message: "Merchant not found." });
-      }
-
-      // CRITICAL: Merchant gets ONLY the base link amount. Fees remain in Paystack master account as platform revenue!
-      const merchantCreditAmount = Number(link.amount);
-      const currency = link.currency || 'NGN';
-
-      if (!merchant.balances) {
-        merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
-      }
-
-      merchant.balances[currency] = (merchant.balances[currency] || 0) + merchantCreditAmount;
-      await merchant.save();
-
-      console.log(`[WEBHOOK] Credited base amount ${currency} ${merchantCreditAmount} to merchant ${merchant._id}`);
     }
 
     return res.status(200).json({ received: true });
@@ -218,7 +268,7 @@ router.post('/webhook', async (req, res) => {
 // POST /api/payment/verify-and-credit (Manual/fallback verification)
 router.post('/verify-and-credit', async (req, res) => {
   try {
-    const { reference, currency, linkId } = req.body;
+    const { currency, linkId } = req.body;
 
     const link = await PaymentLink.findById(linkId);
     if (!link) {
@@ -233,7 +283,7 @@ router.post('/verify-and-credit', async (req, res) => {
     }
 
     const curr = currency || link.currency || 'NGN';
-    const creditAmount = Number(link.amount); // Base amount only
+    const creditAmount = Number(link.amount);
 
     if (!merchant.balances) {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
@@ -267,7 +317,7 @@ router.get('/sync-payment', authMiddleware, async (req, res) => {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     }
 
-    const recoveryAmount = 200; // Base amount equivalent
+    const recoveryAmount = 200;
     merchant.balances.NGN = (merchant.balances.NGN || 0) + recoveryAmount;
     await merchant.save();
 
