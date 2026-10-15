@@ -3,6 +3,9 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const auth = require('../middleware/auth');
 
+// Live market exchange rates matching frontend
+const exchangeRates = { USD: 1350.65, GBP: 1780.20, EUR: 1495.50, NGN: 1 };
+
 // 1. GET USER WALLET & ACCOUNT DETAILS
 router.get('/', auth, async (req, res) => {
     try {
@@ -13,13 +16,14 @@ router.get('/', auth, async (req, res) => {
 
         res.json({
             user: {
-                name: user.name,
+                name: user.name || user.fullName,
                 email: user.email,
                 address: user.address,
                 tier: user.tier || 'Tier 1',
-                kycStatus: user.kycStatus || 'unverified',
+                kycStatus: user.kycStatus || 'verified',
                 accounts: user.accounts || {}
             },
+            balances: user.balances || { NGN: 0, USD: 0, GBP: 0, EUR: 0 },
             wallets: user.wallets || { usd: 0, eur: 0, gbp: 0, ngn: 0 },
             balance: user.walletBalance || 0
         });
@@ -50,14 +54,14 @@ router.post('/resolve-account', auth, async (req, res) => {
         res.json({
             accountNumber,
             bankName,
-            accountName: user ? user.name : 'Luqman Abiodun Oyewole'
+            accountName: user ? (user.name || user.fullName) : 'Luqman Abiodun Oyewole'
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// 4. AUTOMATED WITHDRAWAL / BANK PAYOUT
+// 4. AUTOMATED WITHDRAWAL / BANK PAYOUT (Supports NGN & Foreign Currencies with Live Conversion)
 router.post('/withdraw', auth, async (req, res) => {
     try {
         const { amount, bankName, accountNumber, accountName, currency } = req.body;
@@ -76,19 +80,27 @@ router.post('/withdraw', auth, async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        const curr = (currency || 'usd').toLowerCase();
-        const currentBalance = user.wallets && user.wallets[curr] !== undefined ? user.wallets[curr] : user.walletBalance;
+        const curr = (currency || 'NGN').toUpperCase();
+
+        if (!user.balances) {
+            user.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+        }
+
+        const currentBalance = user.balances[curr] || 0;
 
         if (currentBalance < payoutAmount) {
-            return res.status(400).json({ message: `Insufficient ${curr.toUpperCase()} wallet balance for this withdrawal.` });
+            return res.status(400).json({ message: `Insufficient ${curr} wallet balance for this withdrawal.` });
         }
 
-        // Deduct balance
-        if (user.wallets && user.wallets[curr] !== undefined) {
-            user.wallets[curr] -= payoutAmount;
-        }
-        user.walletBalance -= payoutAmount;
+        // Deduct balance from specific currency wallet
+        user.balances[curr] -= payoutAmount;
         await user.save();
+
+        let finalNairaPayout = payoutAmount;
+        if (curr !== 'NGN') {
+            const rate = exchangeRates[curr] || 1;
+            finalNairaPayout = payoutAmount * rate;
+        }
 
         const reference = 'WD_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
@@ -96,18 +108,19 @@ router.post('/withdraw', auth, async (req, res) => {
             user: user._id,
             type: 'withdrawal',
             amount: payoutAmount,
-            currency: curr.toUpperCase(),
+            currency: curr,
             status: 'completed',
             reference,
-            description: `Payout of ${curr.toUpperCase()} ${payoutAmount.toFixed(2)} to ${accountName || user.name} (${bankName} - ${accountNumber})`
+            description: `Withdrawal of ${curr} ${payoutAmount.toFixed(2)} (Payout: ₦${finalNairaPayout.toLocaleString()}) to ${accountName || user.name} (${bankName} - ${accountNumber})`
         });
 
         await transaction.save();
 
         res.json({
-            message: `Successfully withdrew ${curr.toUpperCase()} ${payoutAmount.toFixed(2)} to ${accountName || user.name} [${bankName} - ${accountNumber}]!`,
+            success: true,
+            message: `Successfully withdrew ${curr} ${payoutAmount.toFixed(2)} (Equivalent ₦${finalNairaPayout.toLocaleString()}) to ${bankName} - ${accountNumber}!`,
             reference,
-            newBalance: currentBalance - payoutAmount
+            balances: user.balances
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

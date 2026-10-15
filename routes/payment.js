@@ -194,17 +194,18 @@ router.post('/webhook', async (req, res) => {
         return res.status(404).json({ success: false, message: "Merchant not found." });
       }
 
-      const amountPaid = data.amount / 100;
-      const currency = data.currency || link.currency || 'NGN';
+      // CRITICAL: Merchant gets ONLY the base link amount. Fees remain in Paystack master account as platform revenue!
+      const merchantCreditAmount = Number(link.amount);
+      const currency = link.currency || 'NGN';
 
       if (!merchant.balances) {
         merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
       }
 
-      merchant.balances[currency] = (merchant.balances[currency] || 0) + amountPaid;
+      merchant.balances[currency] = (merchant.balances[currency] || 0) + merchantCreditAmount;
       await merchant.save();
 
-      console.log(`[WEBHOOK] Credited ${currency} ${amountPaid} to merchant ${merchant._id}`);
+      console.log(`[WEBHOOK] Credited base amount ${currency} ${merchantCreditAmount} to merchant ${merchant._id}`);
     }
 
     return res.status(200).json({ received: true });
@@ -217,7 +218,7 @@ router.post('/webhook', async (req, res) => {
 // POST /api/payment/verify-and-credit (Manual/fallback verification)
 router.post('/verify-and-credit', async (req, res) => {
   try {
-    const { reference, amount, currency, linkId } = req.body;
+    const { reference, currency, linkId } = req.body;
 
     const link = await PaymentLink.findById(linkId);
     if (!link) {
@@ -232,7 +233,7 @@ router.post('/verify-and-credit', async (req, res) => {
     }
 
     const curr = currency || link.currency || 'NGN';
-    const creditAmount = Number(amount) || Number(link.amount);
+    const creditAmount = Number(link.amount); // Base amount only
 
     if (!merchant.balances) {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
@@ -243,7 +244,7 @@ router.post('/verify-and-credit', async (req, res) => {
 
     return res.json({
       success: true,
-      message: `Successfully credited ${curr} ${creditAmount} to merchant balance.`,
+      message: `Successfully credited base amount ${curr} ${creditAmount} to merchant balance.`,
       balances: merchant.balances
     });
   } catch (err) {
@@ -266,7 +267,7 @@ router.get('/sync-payment', authMiddleware, async (req, res) => {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     }
 
-    const recoveryAmount = 300;
+    const recoveryAmount = 200; // Base amount equivalent
     merchant.balances.NGN = (merchant.balances.NGN || 0) + recoveryAmount;
     await merchant.save();
 

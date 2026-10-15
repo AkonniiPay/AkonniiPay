@@ -53,30 +53,43 @@
         <small class="font-monospace">$1 = ₦1,350.65 | £1 = ₦1,780.20 | €1 = ₦1,495.50</small>
       </div>
 
-      <!-- Platform Balances Grid -->
+      <!-- Platform Balances Grid (Clickable to Withdraw) -->
       <div class="row g-3 mb-4">
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm p-3 rounded-3">
-            <span class="text-muted small fw-semibold">NGN Platform Balance</span>
+          <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="NGN" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted small fw-semibold">NGN Platform Balance</span>
+              <i class="bi bi-wallet2 text-primary"></i>
+            </div>
             <h3 class="fw-bold mt-2 mb-0" id="ngnBalance">₦0</h3>
+            <span class="text-success small mt-1 d-inline-block"><i class="bi bi-arrow-up-right"></i> Click to withdraw</span>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm p-3 rounded-3">
-            <span class="text-muted small fw-semibold">USD Platform Balance</span>
+          <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="USD" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted small fw-semibold">USD Platform Balance</span>
+              <i class="bi bi-wallet2 text-primary"></i>
+            </div>
             <h3 class="fw-bold mt-2 mb-0" id="usdBalance">$0.00</h3>
+            <span class="text-success small mt-1 d-inline-block"><i class="bi bi-arrow-up-right"></i> Click to withdraw</span>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="card border-0 shadow-sm p-3 rounded-3">
-            <span class="text-muted small fw-semibold">GBP Platform Balance</span>
+          <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="GBP" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted small fw-semibold">GBP Platform Balance</span>
+              <i class="bi bi-wallet2 text-primary"></i>
+            </div>
             <h3 class="fw-bold mt-2 mb-0" id="gbpBalance">£0.00</h3>
+            <span class="text-success small mt-1 d-inline-block"><i class="bi bi-arrow-up-right"></i> Click to withdraw</span>
           </div>
         </div>
         <div class="col-md-3">
           <div class="card border-0 shadow-sm p-3 rounded-3">
             <span class="text-muted small fw-semibold">KYC Status</span>
             <h4 class="fw-bold text-success mt-2 mb-0" id="kycStatusBadge">Verified</h4>
+            <span class="text-muted small mt-1 d-inline-block">Fully Activated</span>
           </div>
         </div>
       </div>
@@ -177,17 +190,71 @@
     </div>
   </div>
 
+  <!-- Withdrawal Modal -->
+  <div class="modal fade" id="withdrawModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2"></i> Withdraw Funds</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="withdrawForm">
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Select Wallet / Currency</label>
+              <select id="withdrawCurrency" class="form-select" required>
+                <option value="NGN">NGN Wallet (Balance: <span id="modalBalNGN">₦0</span>)</option>
+                <option value="USD">USD Wallet (Balance: $<span id="modalBalUSD">0.00</span>)</option>
+                <option value="GBP">GBP Wallet (Balance: £<span id="modalBalGBP">0.00</span>)</option>
+                <option value="EUR">EUR Wallet (Balance: €<span id="modalBalEUR">0.00</span>)</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Amount to Withdraw</label>
+              <input type="number" id="withdrawAmount" class="form-control" placeholder="Enter amount" step="0.01" min="1" required>
+            </div>
+
+            <div id="conversionBox" class="alert alert-info d-none py-2 small mb-3">
+              <i class="bi bi-info-circle-fill me-1"></i> Equivalent Naira Payout: <strong id="nairaPayoutText">₦0.00</strong>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Nigerian Bank Name</label>
+              <input type="text" id="bankName" class="form-control" placeholder="e.g. Wema Bank, GTBank, Access Bank" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Account Number (10 Digits)</label>
+              <input type="text" id="accountNumber" class="form-control" placeholder="0123456789" maxlength="10" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Account Name</label>
+              <input type="text" id="accountName" class="form-control" placeholder="Your full bank account name" required>
+            </div>
+
+            <button type="submit" id="withdrawBtn" class="btn btn-success w-100 fw-semibold py-2">
+              Confirm & Withdraw to Bank
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
     let userData = null;
+    const exchangeRates = { USD: 1350.65, GBP: 1780.20, EUR: 1495.50, NGN: 1 };
 
     async function loadDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return window.location.href = '/login.html';
 
       try {
-        const res = await fetch('/api/user/profile', {
+        const res = await fetch('/api/wallet', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -198,19 +265,23 @@
 
         const data = await res.json();
         userData = data.user || data;
+        const balances = data.balances || { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
 
         if (userData) {
-          const fullName = userData.fullName || "Luqman Abiodun Oyewole";
-
+          const fullName = userData.name || userData.fullName || "Luqman Abiodun Oyewole";
           document.querySelectorAll('.userFullName').forEach(el => el.innerText = fullName);
 
-          if (userData.balances) {
-            document.getElementById('ngnBalance').innerText = `₦${(userData.balances.NGN || 0).toLocaleString()}`;
-            document.getElementById('usdBalance').innerText = `$${(userData.balances.USD || 0).toFixed(2)}`;
-            document.getElementById('gbpBalance').innerText = `£${(userData.balances.GBP || 0).toFixed(2)}`;
-          }
+          // Update balances on UI and Modal
+          document.getElementById('ngnBalance').innerText = `₦${(balances.NGN || 0).toLocaleString()}`;
+          document.getElementById('usdBalance').innerText = `$${(balances.USD || 0).toFixed(2)}`;
+          document.getElementById('gbpBalance').innerText = `£${(balances.GBP || 0).toFixed(2)}`;
 
-          const ngnAcc = userData.virtualAccounts?.NGN;
+          document.getElementById('modalBalNGN').innerText = `₦${(balances.NGN || 0).toLocaleString()}`;
+          document.getElementById('modalBalUSD').innerText = `${(balances.USD || 0).toFixed(2)}`;
+          document.getElementById('modalBalGBP').innerText = `${(balances.GBP || 0).toFixed(2)}`;
+          document.getElementById('modalBalEUR').innerText = `${(balances.EUR || 0).toFixed(2)}`;
+
+          const ngnAcc = userData.virtualAccounts?.NGN || userData.accounts?.NGN;
           if (ngnAcc && ngnAcc.accountNumber) {
             document.getElementById('ngnBankName').innerText = ngnAcc.bankName || "Wema Bank";
             document.getElementById('ngnAccNo').innerText = ngnAcc.accountNumber;
@@ -269,8 +340,8 @@
     }
 
     function setupCardModals(user) {
-      const fullName = user.fullName || "Luqman Abiodun Oyewole";
-      const va = user.virtualAccounts || {};
+      const fullName = user.name || user.fullName || "Luqman Abiodun Oyewole";
+      const va = user.virtualAccounts || user.accounts || {};
 
       const ngn = va.NGN || {};
       const usd = va.USD || {};
@@ -316,6 +387,16 @@
           <div><label class="text-muted small fw-semibold">Bank Address</label><div class="fw-semibold text-secondary">${eur.address || '16 Blvd des Italiens, Paris, FR'}</div></div>
         `);
       });
+
+      // Clickable Balance Cards to open withdrawal modal
+      document.querySelectorAll('.balance-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const currency = card.getAttribute('data-currency');
+          document.getElementById('withdrawCurrency').value = currency;
+          updateConversion();
+          new bootstrap.Modal(document.getElementById('withdrawModal')).show();
+        });
+      });
     }
 
     function openAccountModal(title, htmlContent) {
@@ -324,6 +405,66 @@
       const modal = new bootstrap.Modal(document.getElementById('bankDetailModal'));
       modal.show();
     }
+
+    // Live conversion update
+    document.getElementById('withdrawAmount')?.addEventListener('input', updateConversion);
+    document.getElementById('withdrawCurrency')?.addEventListener('change', updateConversion);
+
+    function updateConversion() {
+      const curr = document.getElementById('withdrawCurrency').value;
+      const amount = parseFloat(document.getElementById('withdrawAmount').value) || 0;
+      const box = document.getElementById('conversionBox');
+
+      if (curr !== 'NGN' && amount > 0) {
+        const rate = exchangeRates[curr] || 1;
+        const payout = amount * rate;
+        document.getElementById('nairaPayoutText').innerText = `₦${payout.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        box.classList.remove('d-none');
+      } else {
+        box.classList.add('d-none');
+      }
+    }
+
+    // Handle Withdrawal Form Submission
+    document.getElementById('withdrawForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const currency = document.getElementById('withdrawCurrency').value;
+      const amount = document.getElementById('withdrawAmount').value;
+      const bankName = document.getElementById('bankName').value;
+      const accountNumber = document.getElementById('accountNumber').value;
+      const accountName = document.getElementById('accountName').value;
+
+      const btn = document.getElementById('withdrawBtn');
+      btn.disabled = true;
+      btn.innerText = 'Processing Payout...';
+
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/wallet/withdraw', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ currency, amount, bankName, accountNumber, accountName })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert(data.message || data.error || "Withdrawal failed.");
+          btn.disabled = false;
+          btn.innerText = 'Confirm & Withdraw to Bank';
+        }
+      } catch (err) {
+        console.error("Withdraw error:", err);
+        alert("Network error processing withdrawal.");
+        btn.disabled = false;
+        btn.innerText = 'Confirm & Withdraw to Bank';
+      }
+    });
 
     document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
       const token = localStorage.getItem('token');
@@ -338,7 +479,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          alert(`Success! Payment of ₦${data.amount || 300} synchronized. Balance updated.`);
+          alert(`Success! Payment of ₦${data.amount || 200} synchronized. Balance updated.`);
           window.location.reload();
         } else {
           alert(`Sync Failed: ${data.message || 'Transaction reference not found.'}`);
