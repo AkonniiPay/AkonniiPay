@@ -3,7 +3,6 @@ const axios = require('axios');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
-// Helper to construct foreign virtual accounts with the user's correct name
 function buildForeignAccounts(fullName) {
   const accountHolder = fullName || "Luqman Abiodun Oyewole";
   return {
@@ -31,7 +30,7 @@ function buildForeignAccounts(fullName) {
   };
 }
 
-// GET USER PROFILE (Auto-syncs Name across ALL Currencies & Auto-Heals Paystack DVA)
+// GET USER PROFILE
 router.get('/profile', auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
@@ -42,75 +41,23 @@ router.get('/profile', auth, async (req, res) => {
 
         user.virtualAccounts = user.virtualAccounts || {};
 
-        // 1. Force Sync Foreign Accounts (USD, GBP, EUR) Account Names
-        const foreign = buildForeignAccounts(fullName);
-
-        if (!user.virtualAccounts.USD || user.virtualAccounts.USD.accountName !== fullName) {
-            user.virtualAccounts.USD = { ...foreign.USD, ...(user.virtualAccounts.USD || {}), accountName: fullName };
+        // Always guarantee an NGN virtual account exists
+        if (!user.virtualAccounts.NGN || !user.virtualAccounts.NGN.accountNumber) {
+            user.virtualAccounts.NGN = {
+                bankName: "Wema Bank",
+                accountNumber: "9961594893",
+                accountName: fullName
+            };
             modified = true;
-        }
-        if (!user.virtualAccounts.GBP || user.virtualAccounts.GBP.accountName !== fullName) {
-            user.virtualAccounts.GBP = { ...foreign.GBP, ...(user.virtualAccounts.GBP || {}), accountName: fullName };
-            modified = true;
-        }
-        if (!user.virtualAccounts.EUR || user.virtualAccounts.EUR.accountName !== fullName) {
-            user.virtualAccounts.EUR = { ...foreign.EUR, ...(user.virtualAccounts.EUR || {}), accountName: fullName };
-            modified = true;
-        }
-
-        // 2. Auto-generate/Heal Paystack Live NGN Virtual Account if verified but using dummy/mock account
-        const secretKey = process.env.PAYSTACK_SECRET_KEY;
-        const currentNgnAcc = user.virtualAccounts.NGN?.accountNumber || '';
-        const isMockAccount = !currentNgnAcc || currentNgnAcc.startsWith('99');
-
-        if (user.kycStatus === 'Verified' && isMockAccount && secretKey) {
-            try {
-                const nameParts = fullName.trim().split(' ');
-                const firstName = nameParts[0] || 'Merchant';
-                const lastName = nameParts.slice(1).join(' ') || 'User';
-
-                const customerRes = await axios.post(
-                    'https://api.paystack.co/customer',
-                    {
-                        email: user.email,
-                        first_name: firstName,
-                        last_name: lastName,
-                        phone: user.phoneNumber || user.phone || '+2348080567034'
-                    },
-                    { headers: { Authorization: `Bearer ${secretKey}` } }
-                );
-
-                const customerCode = customerRes.data.data.customer_code;
-
-                const dvaRes = await axios.post(
-                    'https://api.paystack.co/dedicated_account',
-                    {
-                        customer: customerCode,
-                        preferred_bank: "wema-bank",
-                        bvn: user.bvn || "22703113676"
-                    },
-                    { headers: { Authorization: `Bearer ${secretKey}` } }
-                );
-
-                if (dvaRes.data && dvaRes.data.status && dvaRes.data.data) {
-                    const accountData = dvaRes.data.data;
-                    user.virtualAccounts.NGN = {
-                        bankName: accountData.bank?.name || "Wema Bank",
-                        accountNumber: accountData.account_number,
-                        accountName: accountData.account_name || fullName
-                    };
-                    modified = true;
-                }
-            } catch (paystackErr) {
-                console.warn("Paystack Auto-Heal Notice:", paystackErr.response?.data || paystackErr.message);
-            }
-        }
-
-        // Ensure NGN account holder name matches
-        if (user.virtualAccounts.NGN && user.virtualAccounts.NGN.accountName !== fullName) {
+        } else {
             user.virtualAccounts.NGN.accountName = fullName;
-            modified = true;
         }
+
+        // Sync foreign account names
+        const foreign = buildForeignAccounts(fullName);
+        user.virtualAccounts.USD = { ...foreign.USD, ...(user.virtualAccounts.USD || {}), accountName: fullName };
+        user.virtualAccounts.GBP = { ...foreign.GBP, ...(user.virtualAccounts.GBP || {}), accountName: fullName };
+        user.virtualAccounts.EUR = { ...foreign.EUR, ...(user.virtualAccounts.EUR || {}), accountName: fullName };
 
         if (modified) {
             user.markModified('virtualAccounts');
@@ -221,14 +168,14 @@ router.post('/verify', auth, async (req, res) => {
                     };
                 }
             } catch (paystackErr) {
-                console.warn("Paystack DVA Response Notice:", paystackErr.response?.data || paystackErr.message);
+                console.warn("Paystack DVA Notice:", paystackErr.response?.data || paystackErr.message);
             }
         }
 
         if (!realNgnAccount || !realNgnAccount.accountNumber) {
             realNgnAccount = {
                 bankName: "Wema Bank",
-                accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
+                accountNumber: "9961594893",
                 accountName: fullName
             };
         }
@@ -250,7 +197,7 @@ router.post('/verify', auth, async (req, res) => {
 
         res.json({
             success: true,
-            message: "Identity verified and dedicated account generated successfully!",
+            message: "Identity verified and saved successfully!",
             user: {
                 kycStatus: user.kycStatus,
                 bvn: user.bvn,

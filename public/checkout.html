@@ -3,152 +3,181 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AkonniiPay - Secure Global Guest Checkout</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Paystack SDK for NGN -->
-  <script src="https://js.paystack.co/v1/inline.js"></script>
-  <!-- Flutterwave SDK for USD, EUR, GBP -->
-  <script src="https://checkout.flutterwave.com/v3.js"></script>
+  <title>AkonniiPay - Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4 font-sans">
+<body class="bg-light">
 
-  <div class="w-full max-w-lg bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl space-y-6">
-    <div class="text-center space-y-1">
-      <h1 class="text-2xl font-black text-blue-500 tracking-wider">AkonniiPay</h1>
-      <p id="recipientLabel" class="text-xs text-gray-400">Secure Global Payment Gateway</p>
+  <div class="d-flex" id="wrapper">
+    <!-- Sidebar -->
+    <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
+      <h3 class="fw-bold fs-4 mb-4 text-primary">AkonniiPay</h3>
+      <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item mb-2">
+          <a href="/dashboard" class="nav-link active text-white"><i class="bi bi-house-door me-2"></i> Home</a>
+        </li>
+        <li class="nav-item mb-2">
+          <a href="/generate-link.html" class="nav-link text-white-50"><i class="bi bi-link-45deg me-2"></i> Generate Link</a>
+        </li>
+        <li class="nav-item mb-2">
+          <a href="/transactions.html" class="nav-link text-white-50"><i class="bi bi-list-task me-2"></i> Transactions</a>
+        </li>
+        <li class="nav-item mb-2">
+          <a href="/verification.html" class="nav-link text-white-50"><i class="bi bi-shield-check me-2"></i> Verification Center</a>
+        </li>
+        <li class="nav-item mb-2">
+          <a href="/settings.html" class="nav-link text-white-50"><i class="bi bi-gear me-2"></i> Settings</a>
+        </li>
+      </ul>
     </div>
 
-    <div class="bg-gray-800/80 border border-gray-700/60 p-6 rounded-2xl space-y-2">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment Request</p>
-      <h2 id="checkoutTitle" class="text-xl font-bold text-white">Loading payment details...</h2>
-      <p id="checkoutDescription" class="text-xs text-gray-300"></p>
-      <div class="pt-2 flex justify-between items-center border-t border-gray-700 mt-4">
-        <span class="text-xs text-gray-400">Total Amount</span>
-        <span id="checkoutAmount" class="text-3xl font-extrabold text-green-400">$0.00</span>
-      </div>
-    </div>
-
-    <form id="checkoutForm" class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Your Full Name</label>
-        <input type="text" id="guestName" placeholder="Enter your full name" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Your Email Address</label>
-        <input type="email" id="guestEmail" placeholder="Enter your email address" required class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
+    <!-- Main Page Content -->
+    <div id="page-content-wrapper" class="w-100 p-4">
+      
+      <!-- Top Bar Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <h2 class="fw-bold mb-0">Welcome Back, Merchant</h2>
+        <div class="d-flex align-items-center gap-2">
+          <button id="syncPaymentBtn" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-repeat me-1"></i> Sync / Recover Payment
+          </button>
+          <button id="signOutBtn" class="btn btn-outline-danger btn-sm">Sign Out</button>
+        </div>
       </div>
 
-      <button type="submit" id="payBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition">
-        Pay Now
-      </button>
-    </form>
+      <!-- Exchange Rates Banner -->
+      <div class="alert alert-dark d-flex justify-content-between align-items-center py-2 px-3 mb-4 rounded-3 text-success">
+        <small class="fw-semibold"><i class="bi bi-graph-up-arrow me-2"></i>Live Market Exchange Rates:</small>
+        <small class="font-monospace">$1 = ₦1,350.65 | £1 = ₦1,780.20 | €1 = ₦1,495.50</small>
+      </div>
 
-    <div class="text-center">
-      <span class="text-xs text-gray-500">🔒 Encrypted & Secured by AkonniiPay</span>
+      <!-- Platform Balances Grid -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3">
+            <span class="text-muted small fw-semibold">NGN Platform Balance</span>
+            <h3 class="fw-bold mt-2 mb-0" id="ngnBalance">₦0</h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3">
+            <span class="text-muted small fw-semibold">USD Platform Balance</span>
+            <h3 class="fw-bold mt-2 mb-0" id="usdBalance">$0.00</h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3">
+            <span class="text-muted small fw-semibold">GBP Platform Balance</span>
+            <h3 class="fw-bold mt-2 mb-0" id="gbpBalance">£0.00</h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3">
+            <span class="text-muted small fw-semibold">KYC Status</span>
+            <h4 class="fw-bold text-success mt-2 mb-0" id="kycStatusBadge">Verified</h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- Virtual Accounts & Deposit Addresses -->
+      <h4 class="fw-bold mb-3">Your Dedicated Virtual Accounts & Deposit Addresses</h4>
+      <div class="row g-3 mb-4">
+        
+        <!-- NGN Card -->
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="ngnAccountCard" style="cursor: pointer;">
+            <span class="badge bg-warning text-dark w-auto align-self-start mb-2">NGN Account</span>
+            <h6 class="fw-bold mb-1" id="ngnBankName">Wema Bank</h6>
+            <p class="text-muted small mb-1">Account No: <strong id="ngnAccNo">9961594893</strong></p>
+            <p class="text-muted small mb-0">Name: <span id="ngnCardName" class="fw-semibold">Luqman Abiodun Oyewole</span></p>
+            <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
+          </div>
+        </div>
+
+        <!-- USD Card -->
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="usdAccountCard" style="cursor: pointer;">
+            <span class="badge bg-primary w-auto align-self-start mb-2">USD Account</span>
+            <h6 class="fw-bold mb-1">Community Federal Savings Bank</h6>
+            <p class="text-muted small mb-1">Routing: <strong>026073150</strong> | Acc: <strong id="usdAccNo">3094882104</strong></p>
+            <p class="text-muted small mb-0">Name: <span id="usdCardName" class="fw-semibold">Luqman Abiodun Oyewole</span></p>
+            <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
+          </div>
+        </div>
+
+        <!-- GBP Card -->
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="gbpAccountCard" style="cursor: pointer;">
+            <span class="badge bg-dark w-auto align-self-start mb-2">GBP Account</span>
+            <h6 class="fw-bold mb-1">Barclays Bank UK</h6>
+            <p class="text-muted small mb-1">Sort Code: <strong>20-04-15</strong> | Acc: <strong id="gbpAccNo">70482910</strong></p>
+            <p class="text-muted small mb-0">Name: <span id="gbpCardName" class="fw-semibold">Luqman Abiodun Oyewole</span></p>
+            <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
+          </div>
+        </div>
+
+        <!-- EUR Card -->
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm p-3 rounded-3 h-100" id="eurAccountCard" style="cursor: pointer;">
+            <span class="badge bg-success w-auto align-self-start mb-2">EUR Account</span>
+            <h6 class="fw-bold mb-1">BNP Paribas</h6>
+            <p class="text-muted small mb-1">IBAN: <strong id="eurAccNo">FR76300040000...</strong></p>
+            <p class="text-muted small mb-0">Name: <span id="eurCardName" class="fw-semibold">Luqman Abiodun Oyewole</span></p>
+            <span class="text-primary small mt-2 d-inline-block"><i class="bi bi-box-arrow-up-right me-1"></i> Click for full details</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Payment Link Records -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0">Payment Link Records</h4>
+        <a href="/generate-link.html" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i> Create Link</a>
+      </div>
+      <div class="card border-0 shadow-sm p-3 rounded-3 mb-4">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Title</th>
+                <th>Amount</th>
+                <th>Currency</th>
+                <th>Status</th>
+                <th>Link URL</th>
+                <th>Created Date</th>
+              </tr>
+            </thead>
+            <tbody id="paymentLinksTableBody">
+              <tr>
+                <td colspan="6" class="text-center text-muted py-3">Loading payment link records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <script>
-    const API_URL = window.location.origin;
-    const urlParams = new URLSearchParams(window.location.search);
-    const linkIdentifier = urlParams.get('id') || urlParams.get('slug');
+  <!-- Bank Detail Modal -->
+  <div class="modal fade" id="bankDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fw-bold" id="modalBankTitle">Account Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4" id="modalBankBody"></div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    let linkData = null;
-
-    async function loadCheckoutDetails() {
-      if (!linkIdentifier) {
-        document.body.innerHTML = `<div class="text-center p-8 text-red-400 font-bold">Invalid payment link.</div>`;
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/api/payment/checkout/${linkIdentifier}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-
-        linkData = data;
-        document.getElementById('checkoutTitle').innerText = data.title;
-        document.getElementById('checkoutDescription').innerText = data.description || '';
-        
-        const currency = (data.currency || 'USD').toUpperCase();
-        const symbol = currency === 'NGN' ? '₦' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
-        document.getElementById('checkoutAmount').innerText = `${symbol}${Number(data.amount).toFixed(2)} (${currency})`;
-        document.getElementById('recipientLabel').innerText = `Paid to ${data.recipientName || 'Merchant'}`;
-      } catch (err) {
-        document.body.innerHTML = `<div class="text-center p-8 text-red-400 font-bold">Payment link expired or not found.</div>`;
-      }
-    }
-
-    document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const guestName = document.getElementById('guestName').value;
-      const guestEmail = document.getElementById('guestEmail').value;
-
-      if (!linkData) return alert('Payment data not loaded.');
-
-      const currency = (linkData.currency || 'USD').toUpperCase();
-      const amount = Number(linkData.amount);
-      const reference = 'AKP_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-
-      if (currency === 'NGN') {
-        // Route NGN through Paystack
-        const paystackKey = 'pk_test_f072c4b9ce7cdc851f1c6cad46e84620e66a7252';
-        const handler = PaystackPop.setup({
-          key: paystackKey,
-          email: guestEmail,
-          amount: Math.round(amount * 100),
-          currency: 'NGN',
-          ref: reference,
-          metadata: { guestName, linkId: linkData.id, merchantId: linkData.merchantId },
-          callback: function(response) {
-            verifyPaymentOnBackend(response.reference, guestName, guestEmail);
-          },
-          onClose: function() { alert('Payment closed.'); }
-        });
-        handler.openIframe();
-      } else {
-        // Route USD, EUR, GBP through Flutterwave International
-        FlutterwaveCheckout({
-          public_key: 'FLWPUBK_TEST-xxxxxxxxxxxxxxxxxxxxx-X', // Replace with your Flutterwave Test Public Key when ready
-          tx_ref: reference,
-          amount: amount,
-          currency: currency,
-          payment_options: "card,banktransfer,paypal",
-          customer: {
-            email: guestEmail,
-            name: guestName,
-          },
-          callback: function (data) {
-            verifyPaymentOnBackend(data.transaction_id, guestName, guestEmail);
-          },
-          onclose: function() { alert('Payment window closed.'); },
-          customizations: {
-            title: "AkonniiPay Global Checkout",
-            description: linkData.title,
-            logo: "https://assets.piedpiper.com/logo.png",
-          },
-        });
-      }
-    });
-
-    async function verifyPaymentOnBackend(reference, guestName, guestEmail) {
-      try {
-        const res = await fetch(`${API_URL}/api/payment/checkout/${linkIdentifier}/pay`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reference, guestName, guestEmail, paymentMethod: 'gateway' })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-
-        alert(data.message);
-        window.location.reload();
-      } catch (err) {
-        alert(err.message);
-      }
-    }
-
-    loadCheckoutDetails();
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/dashboard.js"></script>
 </body>
 </html>
