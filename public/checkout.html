@@ -63,7 +63,6 @@
     </div>
   </div>
 
-  <!-- Load Paystack Inline script if needed -->
   <script src="https://js.paystack.co/v1/inline.js"></script>
 
   <script>
@@ -90,18 +89,15 @@
 
         const link = data.link || data;
 
-        // Calculate fee if payer bears fee
         let baseAmount = Number(link.amount);
         let finalAmount = baseAmount;
         let fee = 0;
 
-        // If feeBearer is payer, add standard gateway charge (e.g. ~1.5% + flat fee or flat calculation)
         if (link.feeBearer === 'payer' || link.chargeBearer === 'payer') {
-          // Example calculation for NGN: 1.5% + ₦100 capped or standard
           fee = link.currency === 'NGN' ? Math.max(baseAmount * 0.015, 100) : baseAmount * 0.02;
           finalAmount = baseAmount + fee;
 
-          document.getElementById('baseAmountTextinnerText') = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;
+          document.getElementById('baseAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;
           document.getElementById('feeAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${fee.toFixed(2)}`;
           document.getElementById('feeRow').classList.remove('d-none');
         } else {
@@ -112,7 +108,6 @@
         document.getElementById('paymentAmount').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${Math.round(finalAmount).toLocaleString()} ${link.currency || ''}`;
         document.getElementById('checkoutContent').classList.remove('d-none');
 
-        // Handle form submission and initialize payment
         document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
           e.preventDefault();
           const name = document.getElementById('clientName').value;
@@ -123,7 +118,6 @@
           payBtn.innerText = 'Initializing Secure Gateway...';
 
           try {
-            // Call backend to initialize transaction
             const initRes = await fetch('/api/payment/initialize', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -138,15 +132,11 @@
 
             const initData = await initRes.json();
 
-            if (initRes.ok && initData.authorization_url) {
-              // Redirect directly to payment gateway URL (Paystack/Flutterwave)
-              window.location.href = initData.authorization_url;
-            } else if (initData.reference) {
-              // If Paystack inline popup is used
+            if (initRes.ok && initData.reference) {
               let handler = PaystackPop.setup({
                 key: initData.publicKey || 'pk_live_placeholder',
                 email: email,
-                amount: Math.round(finalAmount * 100), // in kobo/cents
+                amount: Math.round(finalAmount * 100),
                 currency: link.currency || 'NGN',
                 ref: initData.reference,
                 callback: function(response) {

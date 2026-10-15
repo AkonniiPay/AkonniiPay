@@ -35,8 +35,6 @@ router.post('/create-link', authMiddleware, async (req, res) => {
 
     const linkId = new mongoose.Types.ObjectId();
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    
-    // Public client-facing payment link format
     const publicCheckoutUrl = `${baseUrl}/pay/${uniqueSlug}`;
 
     const newLink = new PaymentLink({
@@ -114,6 +112,33 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   } catch (err) {
     console.error("Error fetching link by slug:", err);
     return res.status(500).json({ success: false, message: "Server error fetching payment link." });
+  }
+});
+
+// POST /api/payment/initialize (Public checkout payment initialization)
+router.post('/initialize', async (req, res) => {
+  try {
+    const { linkId, slug, email, name, amount } = req.body;
+
+    const query = slug ? { slug } : { _id: linkId };
+    const link = await PaymentLink.findOne(query);
+
+    if (!link || link.status !== 'Active') {
+      return res.status(404).json({ success: false, message: "Payment link not found or inactive." });
+    }
+
+    const txRef = 'TRX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
+
+    // Return reference and public key for Paystack popup initialization
+    return res.json({
+      success: true,
+      reference: txRef,
+      publicKey: process.env.PAYSTACK_PUBLIC_KEY || 'pk_live_placeholder',
+      message: "Payment initialized successfully."
+    });
+  } catch (err) {
+    console.error("Payment initialization error:", err);
+    return res.status(500).json({ success: false, message: "Error initializing payment transaction." });
   }
 });
 
