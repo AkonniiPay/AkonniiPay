@@ -5,23 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AkonniiPay - Generate Payment Link</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .sidebar { min-height: 100vh; background: #1a1f36; color: #fff; padding-top: 20px; }
         .sidebar a { color: #a3aed0; text-decoration: none; padding: 12px 20px; display: block; font-weight: 500; }
         .sidebar a:hover, .sidebar a.active { color: #fff; background: #2b3149; border-left: 4px solid #4318ff; }
         .main-content { padding: 30px; }
-        .max-w-600 { max-width: 600px; }
+        .card-custom { background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar Navigation -->
         <div class="col-md-2 sidebar d-none d-md-block">
-            <h4 class="text-center mb-4 text-white">AkonniiPay</h4>
+            <h4 class="text-center mb-4 text-white fw-bold">AkonniiPay</h4>
             <a href="/dashboard"><i class="fa-solid fa-house me-2"></i> 🏠 Home</a>
             <a href="/generate-link" class="active"><i class="fa-solid fa-link me-2"></i> 🔗 Generate Link</a>
             <a href="/transactions"><i class="fa-solid fa-list-check me-2"></i> 📊 Transactions</a>
@@ -29,41 +28,53 @@
             <a href="/settings"><i class="fa-solid fa-gear me-2"></i> ⚙️ Settings</a>
         </div>
 
-        <!-- Main Content -->
         <div class="col-md-10 main-content">
-            <h2 class="mb-4">Generate Payment Link</h2>
-            
-            <div class="card shadow-sm border-0 max-w-600">
-                <div class="card-body p-4">
-                    <form id="createLinkForm">
-                        <div class="mb-3">
-                            <label class="form-label font-weight-bold">Payment Title / Description</label>
-                            <input type="text" id="linkTitle" class="form-control" placeholder="e.g., Web Development Services" required>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label font-weight-bold">Amount</label>
-                                <input type="number" id="linkAmount" class="form-control" placeholder="5000" step="0.01" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label font-weight-bold">Currency</label>
-                                <select id="linkCurrency" class="form-select">
-                                    <option value="NGN">NGN (Nigerian Naira)</option>
-                                    <option value="USD">USD (US Dollar)</option>
-                                    <option value="GBP">GBP (British Pound)</option>
-                                    <option value="EUR">EUR (Euro)</option>
-                                    <option value="CAD">CAD (Canadian Dollar)</option>
-                                    <option value="GHS">GHS (Ghanaian Cedi)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2">Create Payment Link</button>
-                    </form>
+            <h2 class="fw-bold mb-4">Generate Payment Link</h2>
 
-                    <div id="linkResult" class="mt-4 d-none alert alert-success">
-                        <strong>Link Created Successfully!</strong>
-                        <input type="text" id="generatedUrlInput" class="form-control my-2" readonly>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('generatedUrlInput').value)">Copy Link</button>
+            <div class="card-custom">
+                <form id="createLinkForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Payment Title / Purpose</label>
+                        <input type="text" id="linkTitle" class="form-control" placeholder="e.g. Video Editing Services" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Amount (Min: $20 / ₦10,000)</label>
+                            <input type="number" id="linkAmount" class="form-control" placeholder="1000" min="20" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Currency</label>
+                            <select id="linkCurrency" class="form-select">
+                                <option value="NGN">NGN (Naira - Paystack)</option>
+                                <option value="USD">USD (US Dollar - Flutterwave)</option>
+                                <option value="GBP">GBP (British Pound - Flutterwave)</option>
+                                <option value="EUR">EUR (Euro - Flutterwave)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Platform Fee Bearer</label>
+                            <select id="chargeBearer" class="form-select">
+                                <option value="payer">Payer pays fee (Add charges to client total)</option>
+                                <option value="merchant">Merchant pays fee (Deduct fee from balance)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Link Expiry Date</label>
+                            <input type="date" id="expiresAt" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold">Generate Link</button>
+                </form>
+
+                <div id="linkResult" class="mt-4 p-3 bg-light rounded d-none border">
+                    <label class="form-label fw-bold text-success">Generated Checkout Link:</label>
+                    <div class="input-group">
+                        <input type="text" id="generatedUrlInput" class="form-control" readonly>
+                        <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('generatedUrlInput').value)">Copy</button>
                     </div>
                 </div>
             </div>

@@ -119,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const bvn = document.getElementById('kycBvn').value.trim();
             const nin = document.getElementById('kycNin').value.trim();
             const errorDiv = document.getElementById('kycErrorMsg');
+            const successDiv = document.getElementById('kycSuccessMsg');
 
             if (bvn.length !== 11 || isNaN(bvn)) {
                 errorDiv.innerText = "Error: BVN must be exactly 11 numeric digits.";
@@ -145,8 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const data = await res.json();
                 if (res.ok) {
-                    alert('KYC Verified successfully! Full platform access granted.');
-                    window.location.href = '/dashboard';
+                    successDiv.innerText = "KYC Verified successfully! Full platform access granted.";
+                    successDiv.classList.remove('d-none');
+                    setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
                 } else {
                     errorDiv.innerText = data.message || 'Verification failed. Details do not match profile.';
                     errorDiv.classList.remove('d-none');
@@ -211,7 +213,7 @@ async function fetchFxRates() {
     }
 }
 
-// LOAD DASHBOARD DATA & VIRTUAL ACCOUNTS
+// LOAD DASHBOARD DATA & BALANCES
 async function fetchDashboardData(token) {
     const tableBody = document.getElementById('paymentLinksTableBody');
     if (!tableBody) return;
@@ -227,7 +229,12 @@ async function fetchDashboardData(token) {
             if (document.getElementById('ngnBalance')) document.getElementById('ngnBalance').innerText = `₦${(data.balances.NGN || 0).toLocaleString()}`;
             if (document.getElementById('usdBalance')) document.getElementById('usdBalance').innerText = `$${(data.balances.USD || 0).toFixed(2)}`;
             if (document.getElementById('gbpBalance')) document.getElementById('gbpBalance').innerText = `£${(data.balances.GBP || 0).toFixed(2)}`;
-            if (document.getElementById('eurBalance')) document.getElementById('eurBalance').innerText = `€${(data.balances.EUR || 0).toFixed(2)}`;
+            if (document.getElementById('kycBadge')) {
+                document.getElementById('kycBadge').innerText = data.kycStatus || 'Pending Verification';
+                if (data.kycStatus === 'Verified') {
+                    document.getElementById('kycBadge').className = 'fw-bold mt-1 text-success';
+                }
+            }
 
             // Render Links Table
             if (data.links && data.links.length > 0) {
