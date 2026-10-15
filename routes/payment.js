@@ -134,9 +134,8 @@ router.post('/initialize', async (req, res) => {
       return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
     }
 
-    // Paystack expects amount in Kobo (multiply NGN by 100)
     const amountInKobo = Math.round(Number(amount) * 100);
-    const callbackUrl = `${req.protocol}://${req.get('host')}/dashboard.html?verify_ref=true&linkId=${link._id}&amount=${amount}`;
+    const callbackUrl = `${req.protocol}://${req.get('host')}/pay/${link.slug}?status=success`;
 
     const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
       email: email,
@@ -169,7 +168,53 @@ router.post('/initialize', async (req, res) => {
   }
 });
 
-// POST /api/payment/verify-and-credit (Automated merchant wallet crediting)
+// POST /api/payment/webhook (Automated background listener for Paystack charges)
+router.post('/webhook', async (req, res) => {
+  try {
+    const event = req.body;
+
+    if (event && event.event === 'charge.success') {
+      const data = event.data;
+      const metadata = data.metadata || {};
+      const linkId = metadata.linkId;
+
+      if (!linkId) {
+        return res.status(400).json({ success: false, message: "Missing linkId in metadata." });
+      }
+
+      const link = await PaymentLink.findById(linkId);
+      if (!link) {
+        return res.status(404).json({ success: false, message: "Payment link not found." });
+      }
+
+      const merchantId = link.userId || link.user;
+      const merchant = await User.findById(merchantId);
+
+      if (!merchant) {
+        return res.status(404).json({ success: false, message: "Merchant not found." });
+      }
+
+      const amountPaid = data.amount / 100;
+      const currency = data.currency || link.currency || 'NGN';
+
+      if (!merchant.balances) {
+        merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+      }
+
+      merchant.balances[currency] = (merchant.balances[currency] || 0) + amountPaid;
+      await merchant.save();
+
+      console.log(`[WEBHOOK] Credited ${currency} ${amountPaid} to merchant ${merchant._id}`);
+    }
+
+    return res.status(200).json({ received: true });
+  } catch (err) {
+    console.error("Webhook error:", err);
+    return res.status(500).json({ success: false, message: "Webhook server error." });
+  }
+});
+
+// POST /api/payment/verify-and-credit (Manual/fallback verification)
 router.post('/verify-and-credit', async (req, res) => {
   try {
     const { reference, amount, currency, linkId } = req.body;

@@ -21,6 +21,12 @@
       <p class="text-muted small mt-2">Loading payment details...</p>
     </div>
 
+    <div id="successState" class="alert alert-success d-none text-center py-4">
+      <i class="bi bi-check-circle-fill fs-1 text-success mb-2"></i>
+      <h4 class="fw-bold text-success">Payment Successful!</h4>
+      <p class="text-muted small mb-0">Thank you! Your payment has been processed successfully.</p>
+    </div>
+
     <div id="errorState" class="alert alert-danger d-none text-center py-3"></div>
 
     <div id="checkoutContent" class="d-none">
@@ -65,10 +71,16 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('status') === 'success') {
+        document.getElementById('loadingState').classList.add('d-none');
+        document.getElementById('successState').classList.remove('d-none');
+        return;
+      }
+
       const pathParts = window.location.pathname.split('/').filter(Boolean);
       const payIndex = pathParts.indexOf('pay');
       const slug = payIndex !== -1 ? pathParts[payIndex + 1] : null;
-      const urlParams = new URLSearchParams(window.location.search);
       const linkId = urlParams.get('id');
 
       let endpoint = '';
@@ -125,7 +137,7 @@
 
           const payBtn = document.getElementById('payBtn');
           payBtn.disabled = true;
-          payBtn.innerText = 'Redirecting to Paystack...';
+          payBtn.innerText = 'Redirecting to Secure Gateway...';
 
           try {
             const initRes = await fetch('/api/payment/initialize', {
@@ -143,7 +155,6 @@
             const initData = await initRes.json();
 
             if (initRes.ok && initData.success && initData.authorization_url) {
-              // Smoothly redirect client to Paystack's official secure payment page
               window.location.href = initData.authorization_url;
             } else {
               alert(initData.message || "Error initiating payment gateway.");
