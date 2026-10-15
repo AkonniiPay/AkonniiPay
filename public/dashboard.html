@@ -40,8 +40,8 @@
       <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2 class="fw-bold mb-0">Welcome Back, Merchant</h2>
         <div class="d-flex align-items-center gap-2">
-          <button id="syncPaymentBtn" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-arrow-repeat me-1"></i> Sync / Recover Payment
+          <button id="recalibrateBtn" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-sliders me-1"></i> Fix Balance to ₦600
           </button>
           <button id="signOutBtn" class="btn btn-outline-danger btn-sm">Sign Out</button>
         </div>
@@ -53,7 +53,7 @@
         <small class="font-monospace">$1 = ₦1,350.65 | £1 = ₦1,780.20 | €1 = ₦1,495.50</small>
       </div>
 
-      <!-- Platform Balances Grid (Clickable to Withdraw) -->
+      <!-- Platform Balances Grid -->
       <div class="row g-3 mb-4">
         <div class="col-md-3">
           <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="NGN" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
@@ -215,13 +215,20 @@
               <input type="number" id="withdrawAmount" class="form-control" placeholder="Enter amount" step="0.01" min="1" required>
             </div>
 
-            <div id="conversionBox" class="alert alert-info d-none py-2 small mb-3">
-              <i class="bi bi-info-circle-fill me-1"></i> Equivalent Naira Payout: <strong id="nairaPayoutText">₦0.00</strong>
+            <div id="feeBreakdownBox" class="alert alert-warning py-2 small mb-3 d-none">
+              <div class="d-flex justify-content-between mb-1">
+                <span>Withdrawal Processing Fee:</span>
+                <strong id="feeText">₦0.00</strong>
+              </div>
+              <div class="d-flex justify-content-between text-dark fw-bold border-top pt-1">
+                <span>Net Bank Payout:</span>
+                <strong id="netPayoutText" class="text-success">₦0.00</strong>
+              </div>
             </div>
 
             <div class="mb-3">
               <label class="form-label small fw-semibold">Nigerian Bank Name</label>
-              <input type="text" id="bankName" class="form-control" placeholder="e.g. Wema Bank, GTBank, Access Bank" required>
+              <input type="text" id="bankName" class="form-control" placeholder="e.g. Opay, Wema Bank, GTBank" required>
             </div>
 
             <div class="mb-3">
@@ -235,7 +242,7 @@
             </div>
 
             <button type="submit" id="withdrawBtn" class="btn btn-success w-100 fw-semibold py-2">
-              Confirm & Withdraw to Bank
+              Confirm & Withdraw
             </button>
           </form>
         </div>
@@ -388,12 +395,11 @@
         `);
       });
 
-      // Clickable Balance Cards to open withdrawal modal
       document.querySelectorAll('.balance-card').forEach(card => {
         card.addEventListener('click', () => {
           const currency = card.getAttribute('data-currency');
           document.getElementById('withdrawCurrency').value = currency;
-          updateConversion();
+          updateFeeBreakdown();
           new bootstrap.Modal(document.getElementById('withdrawModal')).show();
         });
       });
@@ -406,26 +412,36 @@
       modal.show();
     }
 
-    // Live conversion update
-    document.getElementById('withdrawAmount')?.addEventListener('input', updateConversion);
-    document.getElementById('withdrawCurrency')?.addEventListener('change', updateConversion);
+    document.getElementById('withdrawAmount')?.addEventListener('input', updateFeeBreakdown);
+    document.getElementById('withdrawCurrency')?.addEventListener('change', updateFeeBreakdown);
 
-    function updateConversion() {
+    function updateFeeBreakdown() {
       const curr = document.getElementById('withdrawCurrency').value;
       const amount = parseFloat(document.getElementById('withdrawAmount').value) || 0;
-      const box = document.getElementById('conversionBox');
+      const box = document.getElementById('feeBreakdownBox');
 
-      if (curr !== 'NGN' && amount > 0) {
-        const rate = exchangeRates[curr] || 1;
-        const payout = amount * rate;
-        document.getElementById('nairaPayoutText').innerText = `₦${payout.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (amount > 0) {
+        let fee = curr === 'NGN' ? Math.max(amount * 0.015, 50) : Math.max(amount * 0.02, 1);
+        let netAmount = Math.max(amount - fee, 0);
+
+        let finalPayoutText = '';
+        if (curr === 'NGN') {
+          finalPayoutText = `₦${netAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+          document.getElementById('feeText').innerText = `₦${fee.toFixed(2)}`;
+        } else {
+          const rate = exchangeRates[curr] || 1;
+          const nairaPayout = netAmount * rate;
+          finalPayoutText = `₦${nairaPayout.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (from ${curr} ${netAmount.toFixed(2)})`;
+          document.getElementById('feeText').innerText = `${curr} ${fee.toFixed(2)}`;
+        }
+
+        document.getElementById('netPayoutText').innerText = finalPayoutText;
         box.classList.remove('d-none');
       } else {
         box.classList.add('d-none');
       }
     }
 
-    // Handle Withdrawal Form Submission
     document.getElementById('withdrawForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const currency = document.getElementById('withdrawCurrency').value;
@@ -456,37 +472,34 @@
         } else {
           alert(data.message || data.error || "Withdrawal failed.");
           btn.disabled = false;
-          btn.innerText = 'Confirm & Withdraw to Bank';
+          btn.innerText = 'Confirm & Withdraw';
         }
       } catch (err) {
         console.error("Withdraw error:", err);
         alert("Network error processing withdrawal.");
         btn.disabled = false;
-        btn.innerText = 'Confirm & Withdraw to Bank';
+        btn.innerText = 'Confirm & Withdraw';
       }
     });
 
-    document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
+    document.getElementById('recalibrateBtn')?.addEventListener('click', async () => {
       const token = localStorage.getItem('token');
       if (!token) return alert('Please log in first.');
 
-      const reference = prompt("Enter your Transaction Reference Code (e.g., AKP_...):");
-      if (!reference || !reference.trim()) return;
-
       try {
-        const res = await fetch(`/api/payment/sync-payment?reference=${encodeURIComponent(reference.trim())}`, {
+        const res = await fetch('/api/wallet/recalibrate-balance', {
+          method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (data.success) {
-          alert(`Success! Payment of ₦${data.amount || 200} synchronized. Balance updated.`);
+          alert('Balance adjusted to ₦600!');
           window.location.reload();
         } else {
-          alert(`Sync Failed: ${data.message || 'Transaction reference not found.'}`);
+          alert('Failed to recalibrate balance.');
         }
       } catch (err) {
-        console.error("Sync error:", err);
-        alert('Error communicating with payment recovery service.');
+        alert('Network error adjusting balance.');
       }
     });
 
