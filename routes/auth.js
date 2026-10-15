@@ -4,36 +4,50 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// POST /api/auth/register (or /api/user/register)
+// POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, address, phone, occupation } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please enter all required fields.' });
+      return res.status(400).json({ success: false, message: 'Email and password are required.' });
     }
 
-    let user = await User.findOne({ email: email.toLowerCase().trim() });
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Check existing user
+    let user = await User.findOne({ email: cleanEmail });
     if (user) {
       return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
     }
 
+    // Split Full Name into First and Last Name
+    const nameParts = (name || 'AkonniiPay Merchant').trim().split(' ');
+    const firstName = nameParts[0] || 'Merchant';
+    const lastName = nameParts.slice(1).join(' ') || 'User';
+
+    // Hash Password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Build User Object with all standard schema properties
     user = new User({
-      name,
-      email: email.toLowerCase().trim(),
+      name: (name || 'AkonniiPay Merchant').trim(),
+      firstName: firstName,
+      lastName: lastName,
+      email: cleanEmail,
       password: hashedPassword,
-      address,
-      phone,
-      occupation,
+      address: address || 'Not provided',
+      phone: phone || '+2340000000000',
+      occupation: occupation || 'Business Owner',
       kycStatus: 'Pending Verification',
-      balances: { NGN: 0, USD: 0, GBP: 0 }
+      balances: { NGN: 0, USD: 0, GBP: 0 },
+      virtualAccounts: {}
     });
 
     await user.save();
 
+    // Sign JWT Token
     const payload = { id: user._id, email: user.email };
     const token = jwt.sign(payload, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
 
@@ -41,12 +55,22 @@ router.post('/register', async (req, res) => {
       success: true,
       token,
       message: 'Account created successfully!',
-      user: { id: user._id, name: user.name, email: user.email, kycStatus: user.kycStatus }
+      user: {
+        id: user._id,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        kycStatus: user.kycStatus
+      }
     });
 
   } catch (err) {
-    console.error('Registration Route Error:', err);
-    return res.status(500).json({ success: false, message: 'Server error during registration.' });
+    console.error('Registration Catch Error:', err.message || err);
+    return res.status(500).json({ 
+      success: false, 
+      message: err.message ? `Registration failed: ${err.message}` : 'Server error during registration.' 
+    });
   }
 });
 
@@ -55,14 +79,20 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Please enter both email and password.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials.' });
+      return res.status(400).json({ success: false, message: 'Invalid email or password.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials.' });
+      return res.status(400).json({ success: false, message: 'Invalid email or password.' });
     }
 
     const payload = { id: user._id, email: user.email };
@@ -72,11 +102,18 @@ router.post('/login', async (req, res) => {
       success: true,
       token,
       message: 'Logged in successfully!',
-      user: { id: user._id, name: user.name, email: user.email, kycStatus: user.kycStatus }
+      user: {
+        id: user._id,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        kycStatus: user.kycStatus
+      }
     });
 
   } catch (err) {
-    console.error('Login Route Error:', err);
+    console.error('Login Catch Error:', err.message || err);
     return res.status(500).json({ success: false, message: 'Server error during login.' });
   }
 });
