@@ -11,6 +11,7 @@
 <body class="bg-light">
 
   <div class="d-flex" id="wrapper">
+    <!-- Sidebar -->
     <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
       <h3 class="fw-bold fs-4 mb-4 text-primary">AkonniiPay</h3>
       <ul class="nav nav-pills flex-column mb-auto">
@@ -22,6 +23,7 @@
       </ul>
     </div>
 
+    <!-- Page Content -->
     <div id="page-content-wrapper" class="w-100 p-4">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold mb-0">Account Settings</h2>
@@ -64,6 +66,10 @@
           <div id="modalAlert" class="alert d-none py-2 px-3 small"></div>
           <form id="editSettingsForm">
             <div class="mb-3">
+              <label class="form-label fw-semibold">Full Legal Name</label>
+              <input type="text" id="inputFullName" class="form-control" placeholder="Luqman Abiodun Oyewole" required>
+            </div>
+            <div class="mb-3">
               <label class="form-label fw-semibold">Residential Address</label>
               <input type="text" id="inputAddress" class="form-control" placeholder="123 Main St, Lagos">
             </div>
@@ -75,7 +81,7 @@
               <label class="form-label fw-semibold">Occupation / Business Type</label>
               <input type="text" id="inputOccupation" class="form-control" placeholder="Software Developer">
             </div>
-            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Save Changes</button>
+            <button type="submit" id="saveChangesBtn" class="btn btn-primary w-100 py-2 fw-semibold">Save Changes</button>
           </form>
         </div>
       </div>
@@ -97,15 +103,19 @@
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
-        if (data.user) {
-          document.getElementById('settingsName').innerText = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim() || data.user.name || "Luqman Abiodun Oyewole";
-          document.getElementById('settingsAddress').innerText = data.user.address || "Not provided yet";
-          document.getElementById('settingsPhone').innerText = data.user.phone || "+234 808 056 7034";
-          document.getElementById('settingsOccupation').innerText = data.user.occupation || "Software Developer";
+        const user = data.user || data;
 
-          document.getElementById('inputAddress').value = data.user.address || '';
-          document.getElementById('inputPhone').value = data.user.phone || '';
-          document.getElementById('inputOccupation').value = data.user.occupation || '';
+        if (user) {
+          const currentName = user.fullName || user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Luqman Abiodun Oyewole";
+          document.getElementById('settingsName').innerText = currentName;
+          document.getElementById('settingsAddress').innerText = user.address || "Not provided yet";
+          document.getElementById('settingsPhone').innerText = user.phoneNumber || user.phone || "+234 808 056 7034";
+          document.getElementById('settingsOccupation').innerText = user.occupation || "Software Developer";
+
+          document.getElementById('inputFullName').value = currentName;
+          document.getElementById('inputAddress').value = user.address || '';
+          document.getElementById('inputPhone').value = user.phoneNumber || user.phone || '';
+          document.getElementById('inputOccupation').value = user.occupation || '';
         }
       } catch (err) {
         console.error('Settings fetch error:', err);
@@ -117,36 +127,44 @@
 
       editForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const saveBtn = document.getElementById('saveChangesBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Saving...';
+
+        const fullName = document.getElementById('inputFullName').value.trim();
         const address = document.getElementById('inputAddress').value.trim();
-        const phone = document.getElementById('inputPhone').value.trim();
+        const phoneNumber = document.getElementById('inputPhone').value.trim();
         const occupation = document.getElementById('inputOccupation').value.trim();
 
         try {
-          const res = await fetch('/api/user/update-profile', {
+          const res = await fetch('/api/user/profile', {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ address, phone, occupation })
+            body: JSON.stringify({ fullName, address, phoneNumber, phone: phoneNumber, occupation })
           });
 
           const data = await res.json();
-          if (res.ok) {
+          if (res.ok && data.success !== false) {
             modalAlert.className = 'alert alert-success py-2 px-3 small';
             modalAlert.innerText = 'Settings updated successfully!';
             modalAlert.classList.remove('d-none');
             setTimeout(() => { window.location.reload(); }, 1000);
           } else {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Changes';
             modalAlert.className = 'alert alert-danger py-2 px-3 small';
-            modalAlert.innerText = data.message || 'Error updating profile.';
+            modalAlert.innerText = data.message || data.error || 'Error updating profile.';
             modalAlert.classList.remove('d-none');
           }
         } catch (err) {
-          modalAlert.className = 'alert alert-success py-2 px-3 small';
-          modalAlert.innerText = 'Profile details saved.';
+          saveBtn.disabled = false;
+          saveBtn.innerText = 'Save Changes';
+          modalAlert.className = 'alert alert-danger py-2 px-3 small';
+          modalAlert.innerText = 'Server communication error.';
           modalAlert.classList.remove('d-none');
-          setTimeout(() => { window.location.reload(); }, 1000);
         }
       });
     });
