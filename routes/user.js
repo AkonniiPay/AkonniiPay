@@ -2,21 +2,69 @@ const router = require('express').Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
-// GET USER PROFILE (With Auto-Heal for Virtual Accounts)
+// Helper to construct foreign and local virtual account structures using user's full name
+function buildVirtualAccounts(fullName) {
+  const accountHolder = fullName || "Luqman Abiodun Oyewole";
+  return {
+    NGN: {
+      bankName: "Wema Bank",
+      accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
+      accountName: accountHolder
+    },
+    USD: {
+      bankName: "Community Federal Savings Bank",
+      accountNumber: "3094" + Math.floor(100000 + Math.random() * 900000),
+      routingNumber: "026073150",
+      accountName: accountHolder,
+      address: "89 5th Ave, New York, NY 10003, USA"
+    },
+    GBP: {
+      bankName: "Barclays Bank UK",
+      accountNumber: "7048" + Math.floor(1000 + Math.random() * 9000),
+      sortCode: "20-04-15",
+      accountName: accountHolder,
+      address: "1 Churchill Place, London, UK"
+    },
+    EUR: {
+      bankName: "BNP Paribas",
+      iban: "FR763000400001" + Math.floor(1000000000 + Math.random() * 9000000000),
+      bic: "BNPAFR2PPXX",
+      accountName: accountHolder,
+      address: "16 Blvd des Italiens, Paris, FR"
+    }
+  };
+}
+
+// GET USER PROFILE (Auto-Heal & Name Sync across all currencies)
 router.get('/profile', auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-        // Auto-generate Wema Bank virtual account if user is verified but account number is missing
-        if (user.kycStatus === 'Verified' && (!user.virtualAccounts || !user.virtualAccounts.NGN || !user.virtualAccounts.NGN.accountNumber)) {
-            const accountHolder = user.fullName || user.name || "Luqman Abiodun Oyewole";
+        const currentName = user.fullName || user.name || "Luqman Abiodun Oyewole";
+
+        // Auto-heal / generate or update virtual accounts with user's verified name
+        if (user.kycStatus === 'Verified') {
             user.virtualAccounts = user.virtualAccounts || {};
-            user.virtualAccounts.NGN = {
-                bankName: "Wema Bank",
-                accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
-                accountName: accountHolder
-            };
+            const built = buildVirtualAccounts(currentName);
+
+            // Ensure NGN details
+            if (!user.virtualAccounts.NGN || !user.virtualAccounts.NGN.accountNumber) {
+                user.virtualAccounts.NGN = built.NGN;
+            } else {
+                user.virtualAccounts.NGN.accountName = currentName;
+            }
+
+            // Sync foreign currency account names
+            user.virtualAccounts.USD = user.virtualAccounts.USD || built.USD;
+            user.virtualAccounts.USD.accountName = currentName;
+
+            user.virtualAccounts.GBP = user.virtualAccounts.GBP || built.GBP;
+            user.virtualAccounts.GBP.accountName = currentName;
+
+            user.virtualAccounts.EUR = user.virtualAccounts.EUR || built.EUR;
+            user.virtualAccounts.EUR.accountName = currentName;
+
             user.markModified('virtualAccounts');
             await user.save();
         }
@@ -39,20 +87,22 @@ router.put('/profile', auth, async (req, res) => {
             user.fullName = fullName;
             user.name = fullName;
             
-            // Split into firstName & lastName as well for compatibility
             const parts = fullName.trim().split(' ');
             user.firstName = parts[0] || user.firstName;
             user.lastName = parts.slice(1).join(' ') || user.lastName;
 
-            // Instantly sync account holder name on NGN Virtual Account
-            if (user.virtualAccounts && user.virtualAccounts.NGN) {
-                user.virtualAccounts.NGN.accountName = fullName;
+            // Instantly sync name across all virtual accounts
+            if (user.virtualAccounts) {
+                if (user.virtualAccounts.NGN) user.virtualAccounts.NGN.accountName = fullName;
+                if (user.virtualAccounts.USD) user.virtualAccounts.USD.accountName = fullName;
+                if (user.virtualAccounts.GBP) user.virtualAccounts.GBP.accountName = fullName;
+                if (user.virtualAccounts.EUR) user.virtualAccounts.EUR.accountName = fullName;
                 user.markModified('virtualAccounts');
             }
         }
         if (address) user.address = address;
         if (occupation) user.occupation = occupation;
-        
+
         const cleanPhone = phoneNumber || phone;
         if (cleanPhone) {
             user.phoneNumber = cleanPhone;
@@ -89,13 +139,7 @@ router.post('/verify', auth, async (req, res) => {
         user.nin = nin.trim();
         user.kycStatus = "Verified";
 
-        user.virtualAccounts = user.virtualAccounts || {};
-        user.virtualAccounts.NGN = {
-            bankName: "Wema Bank",
-            accountNumber: "99" + Math.floor(10000000 + Math.random() * 90000000),
-            accountName: fullName
-        };
-
+        user.virtualAccounts = buildVirtualAccounts(fullName);
         user.markModified('virtualAccounts');
         await user.save();
 
