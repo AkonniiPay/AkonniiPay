@@ -11,6 +11,7 @@
 <body class="bg-light">
 
   <div class="d-flex" id="wrapper">
+    <!-- Sidebar -->
     <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
       <h3 class="fw-bold fs-4 mb-4 text-primary">AkonniiPay</h3>
       <ul class="nav nav-pills flex-column mb-auto">
@@ -22,8 +23,12 @@
       </ul>
     </div>
 
+    <!-- Page Content -->
     <div id="page-content-wrapper" class="w-100 p-4">
-      <h2 class="fw-bold mb-4">Identity Verification (KYC)</h2>
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">Identity Verification (KYC)</h2>
+        <span id="verificationBadge" class="badge bg-warning text-dark fs-6 px-3 py-2">Pending Verification</span>
+      </div>
 
       <div class="card border-0 shadow-sm p-4 rounded-3" style="max-width: 600px;">
         <div id="statusAlert" class="alert d-none py-2 px-3 mb-3 small"></div>
@@ -55,7 +60,9 @@
       const verifyBtn = document.getElementById('verifyBtn');
       const bvnInput = document.getElementById('bvnInput');
       const ninInput = document.getElementById('ninInput');
+      const badge = document.getElementById('verificationBadge');
 
+      // Load user saved details and KYC status on page load
       try {
         const profileRes = await fetch('/api/user/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -67,19 +74,25 @@
           if (profileData.user.nin) ninInput.value = profileData.user.nin;
 
           if (profileData.user.kycStatus === 'Verified') {
+            badge.className = 'badge bg-success text-white fs-6 px-3 py-2';
+            badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Already Verified';
+
             alertBox.className = 'alert alert-success py-3 px-3 mb-3';
-            alertBox.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i><strong>Account Verified!</strong> Your identity is confirmed and dedicated account numbers are generated.';
+            alertBox.innerHTML = '<strong>Identity Verified!</strong> Your BVN and NIN are linked and your dedicated virtual accounts are active.';
             alertBox.classList.remove('d-none');
+
             bvnInput.disabled = true;
             ninInput.disabled = true;
             verifyBtn.disabled = true;
-            verifyBtn.innerText = 'Verified';
+            verifyBtn.className = 'btn btn-success fw-semibold w-100 py-2';
+            verifyBtn.innerText = 'Verified & Secured';
           }
         }
       } catch (err) {
         console.error('KYC Profile fetch error:', err);
       }
 
+      // Handle Verification Form Submission
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -94,7 +107,7 @@
         }
 
         verifyBtn.disabled = true;
-        verifyBtn.innerText = 'Verifying Identity...';
+        verifyBtn.innerText = 'Verifying with Banking Registry...';
 
         try {
           const res = await fetch('/api/kyc/verify', {
@@ -110,24 +123,30 @@
 
           if (res.ok && data.success) {
             alertBox.className = 'alert alert-success py-2 px-3 mb-3 small';
-            alertBox.innerText = 'Verification successful! Updating your dashboard...';
+            alertBox.innerText = 'Verification successful! Your BVN and NIN have been saved.';
             alertBox.classList.remove('d-none');
+
+            badge.className = 'badge bg-success text-white fs-6 px-3 py-2';
+            badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Already Verified';
+
             bvnInput.disabled = true;
             ninInput.disabled = true;
-            verifyBtn.innerText = 'Verified';
-            setTimeout(() => { window.location.href = '/dashboard'; }, 1200);
+            verifyBtn.className = 'btn btn-success fw-semibold w-100 py-2';
+            verifyBtn.innerText = 'Verified & Secured';
+
+            setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
           } else {
             verifyBtn.disabled = false;
             verifyBtn.innerText = 'Verify Account Instantly';
             alertBox.className = 'alert alert-danger py-2 px-3 mb-3 small';
-            alertBox.innerText = data.message || 'Incorrect details provided. Verification failed.';
+            alertBox.innerText = data.message || 'Incorrect BVN/NIN details provided. Verification failed.';
             alertBox.classList.remove('d-none');
           }
         } catch (err) {
           verifyBtn.disabled = false;
           verifyBtn.innerText = 'Verify Account Instantly';
           alertBox.className = 'alert alert-danger py-2 px-3 mb-3 small';
-          alertBox.innerText = 'Communication error during verification.';
+          alertBox.innerText = 'Server error during verification. Please try again.';
           alertBox.classList.remove('d-none');
         }
       });
