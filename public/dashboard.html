@@ -243,20 +243,26 @@
           return;
         }
 
-        tableBody.innerHTML = links.map(link => `
-          <tr>
-            <td class="fw-semibold text-dark">${link.title}</td>
-            <td>₦${Number(link.amount).toLocaleString()}</td>
-            <td>${link.currency || 'NGN'}</td>
-            <td><span class="badge bg-success-subtle text-success">${link.status || 'Active'}</span></td>
-            <td>
-              <a href="${link.shortUrl || link.url}" target="_blank" class="text-primary text-decoration-none text-truncate d-inline-block" style="max-width: 200px;">
-                ${link.shortUrl || link.url}
-              </a>
-            </td>
-            <td class="text-muted small">${new Date(link.createdAt || Date.now()).toLocaleDateString()}</td>
-          </tr>
-        `).join('');
+        tableBody.innerHTML = links.map(link => {
+          const finalUrl = link.shortUrl || link.url;
+          return `
+            <tr>
+              <td class="fw-semibold text-dark">${link.title}</td>
+              <td>₦${Number(link.amount).toLocaleString()}</td>
+              <td>${link.currency || 'NGN'}</td>
+              <td><span class="badge bg-success-subtle text-success">${link.status || 'Active'}</span></td>
+              <td>
+                <div class="input-group input-group-sm" style="max-width: 280px;">
+                  <input type="text" class="form-control form-control-sm font-monospace text-muted" value="${finalUrl}" readonly>
+                  <button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard.writeText('${finalUrl}'); alert('Payment link copied to clipboard!');">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+              </td>
+              <td class="text-muted small">${new Date(link.createdAt || Date.now()).toLocaleDateString()}</td>
+            </tr>
+          `;
+        }).join('');
       } catch (err) {
         console.error("Error fetching payment links:", err);
       }
