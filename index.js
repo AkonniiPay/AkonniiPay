@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
+const PaymentLink = require('./models/PaymentLink');
 
 dotenv.config();
 
@@ -33,6 +34,23 @@ app.use('/api/webhook', require('./routes/webhook'));
 app.use('/api/user', require('./routes/user'));
 
 // 5. EXPLICIT PAGE ROUTES (Express v5 Safe)
+
+// Public Payment Link Slug Resolver
+app.get('/pay/:slug', async (req, res) => {
+    try {
+        const link = await PaymentLink.findOne({ slug: req.params.slug });
+        
+        if (!link || link.status !== 'Active') {
+            return res.status(404).send("This payment link is invalid, expired, or has been closed.");
+        }
+
+        res.sendFile(path.join(__dirname, 'public', 'checkout.html'));
+    } catch (err) {
+        console.error("Public pay route error:", err);
+        res.status(500).send("Server error loading checkout.");
+    }
+});
+
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
