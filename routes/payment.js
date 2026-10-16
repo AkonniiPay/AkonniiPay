@@ -36,7 +36,7 @@ router.post('/create-link', authMiddleware, async (req, res) => {
     const finalExpiresAt = (expiryDate || expiresAt) ? new Date(expiryDate || expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const linkId = new mongoose.Types.ObjectId();
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = `https://akonniipay.top`; // Updated to official custom domain
     const publicCheckoutUrl = `${baseUrl}/pay/${uniqueSlug}`;
 
     const newLink = new PaymentLink({
@@ -80,7 +80,7 @@ router.get('/my-links', authMiddleware, async (req, res) => {
       $or: [{ userId: userId }, { user: userId }] 
     }).sort({ createdAt: -1 });
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = `https://akonniipay.top`;
     const formattedLinks = links.map(link => {
       const obj = link.toObject();
       const slugPath = obj.slug ? `/pay/${obj.slug}` : `/checkout.html?id=${obj._id}`;
@@ -130,12 +130,11 @@ router.post('/initialize', async (req, res) => {
     }
 
     const currency = (link.currency || 'NGN').toUpperCase();
-    const callbackUrl = `${req.protocol}://${req.get('host')}/pay/${link.slug}?status=success`;
+    const callbackUrl = `https://akonniipay.top/dashboard?status=success`;
     const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
 
     // 1. FOREIGN CURRENCY -> FLUTTERWAVE
     if (currency !== 'NGN') {
-      // Supports both FLW_SECRET_KEY and FLUTTERWAVE_SECRET_KEY
       const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
       if (!flwSecretKey) {
         return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
@@ -245,7 +244,7 @@ router.post('/webhook', async (req, res) => {
         const merchant = await User.findById(merchantId);
 
         if (merchant) {
-          const merchantCreditAmount = Number(link.amount); // Base amount only
+          const merchantCreditAmount = Number(link.amount);
 
           if (!merchant.balances) {
             merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
@@ -266,7 +265,7 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-// POST /api/payment/verify-and-credit (Manual/fallback verification)
+// POST /api/payment/verify-and-credit
 router.post('/verify-and-credit', async (req, res) => {
   try {
     const { currency, linkId } = req.body;
@@ -304,7 +303,7 @@ router.post('/verify-and-credit', async (req, res) => {
   }
 });
 
-// GET /api/payment/sync-payment (Emergency recovery fallback)
+// GET /api/payment/sync-payment
 router.get('/sync-payment', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;

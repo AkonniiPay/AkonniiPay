@@ -22,8 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const user = data.user || data;
 
     if (user) {
-      // Priority Full Legal Name
-      const fullName = user.fullName || `${user.firstName \vert{}\vert{} ''}${user.lastName || ''}`.trim() || user.name || "Luqman Abiodun Oyewole";
+      const fullName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || "Luqman Abiodun Oyewole";
 
       // Set Balances
       if (document.getElementById('ngnBalance')) document.getElementById('ngnBalance').innerText = `₦${(user.balances?.NGN || 0).toLocaleString()}`;
@@ -75,7 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.href = '/login.html';
   });
 
-  // 4. Multi-Gateway Sync / Recovery Handler (Paystack + Flutterwave)
+  // 4. Multi-Gateway Sync / Recovery Handler
   document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
     const reference = prompt("Enter your Transaction Reference Code (Paystack AKP_... or Flutterwave FLW_...):");
     if (!reference || !reference.trim()) return;
@@ -99,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Setup Click Handlers for Account Cards
 function setupCardModals(user) {
-  const fullName = user.fullName || `${user.firstName \vert{}\vert{} ''}${user.lastName || ''}`.trim() || user.name || "Luqman Abiodun Oyewole";
+  const fullName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.name || "Luqman Abiodun Oyewole";
   const va = user.virtualAccounts || {};
 
   const ngn = va.NGN || {};
@@ -108,47 +107,19 @@ function setupCardModals(user) {
   const eur = va.EUR || {};
 
   document.getElementById('ngnAccountCard')?.addEventListener('click', () => {
-    openAccountModal(
-      'NGN',
-      ngn.bankName || 'Wema Bank',
-      ngn.accountNumber || 'Pending Verification',
-      '035 (Bank Code)',
-      fullName,
-      'Central Bank of Nigeria NIBSS Direct Deposit'
-    );
+    openAccountModal('NGN', ngn.bankName || 'Wema Bank', ngn.accountNumber || 'Pending Verification', '035 (Bank Code)', fullName, 'Central Bank of Nigeria NIBSS Direct Deposit');
   });
 
   document.getElementById('usdAccountCard')?.addEventListener('click', () => {
-    openAccountModal(
-      'USD',
-      usd.bankName || 'Community Federal Savings Bank',
-      usd.accountNumber || '3094882104',
-      `${usd.routingNumber || '026073150'} (Routing)`,
-      fullName,
-      usd.address || '89 5th Ave, New York, NY 10003, USA'
-    );
+    openAccountModal('USD', usd.bankName || 'Community Federal Savings Bank', usd.accountNumber || '3094882104', `${usd.routingNumber || '026073150'} (Routing)`, fullName, usd.address || '89 5th Ave, New York, NY 10003, USA');
   });
 
   document.getElementById('gbpAccountCard')?.addEventListener('click', () => {
-    openAccountModal(
-      'GBP',
-      gbp.bankName || 'Barclays Bank UK',
-      gbp.accountNumber || '70482910',
-      `${gbp.sortCode || '20-04-15'} (Sort Code)`,
-      fullName,
-      gbp.address || '1 Churchill Place, London E14 5HP, UK'
-    );
+    openAccountModal('GBP', gbp.bankName || 'Barclays Bank UK', gbp.accountNumber || '70482910', `${gbp.sortCode || '20-04-15'} (Sort Code)`, fullName, gbp.address || '1 Churchill Place, London E14 5HP, UK');
   });
 
   document.getElementById('eurAccountCard')?.addEventListener('click', () => {
-    openAccountModal(
-      'EUR',
-      eur.bankName || 'BNP Paribas',
-      eur.iban || 'FR7630004000011234567890143',
-      `${eur.bic || 'BNPAFRPP'} (BIC)`,
-      fullName,
-      eur.address || '16 Boulevard des Italiens, 75009 Paris, France'
-    );
+    openAccountModal('EUR', eur.bankName || 'BNP Paribas', eur.iban || 'FR7630004000011234567890143', `${eur.bic || 'BNPAFRPP'} (BIC)`, fullName, eur.address || '16 Boulevard des Italiens, 75009 Paris, France');
   });
 }
 
@@ -178,4 +149,46 @@ function openAccountModal(type, bankName, accountNumber, routingOrSort, accName,
       <div class="fw-bold fs-6 font-monospace bg-light p-2 rounded border">${routingOrSort}</div>
     </div>
     <div class="mb-3">
-      <label class="text-muted small fw-semibold">Bank Address / Clearing
+      <label class="text-muted small fw-semibold">Clearing Address</label>
+      <div class="text-secondary small">${address}</div>
+    </div>
+  `;
+
+  const modalElement = document.getElementById('accountDetailsModal');
+  if (modalElement && window.bootstrap) {
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+  }
+}
+
+async function fetchPaymentLinks(token) {
+  try {
+    const res = await fetch('/api/payment/my-links', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const links = data.links || data.data || [];
+
+    const container = document.getElementById('paymentLinksTableBody');
+    if (!container) return;
+
+    if (links.length === 0) {
+      container.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No payment links created yet.</td></tr>`;
+      return;
+    }
+
+    container.innerHTML = links.map(link => `
+      <tr>
+        <td class="fw-semibold">${link.title}</td>
+        <td>${link.currency} ${Number(link.amount).toLocaleString()}</td>
+        <td><span class="badge bg-success">${link.status || 'Active'}</span></td>
+        <td class="small text-muted font-monospace"><a href="${link.shortUrl}" target="_blank">${link.shortUrl}</a></td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('${link.shortUrl}'); alert('Link copied to clipboard!');">Copy</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error fetching payment links:', err);
+  }
+}
