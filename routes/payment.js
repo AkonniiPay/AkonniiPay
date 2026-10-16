@@ -135,7 +135,8 @@ router.post('/initialize', async (req, res) => {
 
     // 1. FOREIGN CURRENCY -> FLUTTERWAVE
     if (currency !== 'NGN') {
-      const flwSecretKey = process.env.FLW_SECRET_KEY;
+      // Supports both FLW_SECRET_KEY and FLUTTERWAVE_SECRET_KEY
+      const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
       if (!flwSecretKey) {
         return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
       }
