@@ -26,16 +26,19 @@ const commonBankCodes = {
   'uba': '033'
 };
 
-// Updated realistic withdrawal fee calculation (e.g. ~₦10 fee for ₦200, scaling up organically)
+// Fair withdrawal fee calculation (₦10 for small withdrawals like ₦200–₦5,000; untouched for foreign currencies)
 function calculateWithdrawalFee(amount, currency) {
   const num = Number(amount);
-  if (currency === 'NGN') {
-    if (num <= 500) return 10; // ₦10 fee for small withdrawals like ₦200
-    return Math.max(num * 0.015, 20); // 1.5% or minimum ₦20 for larger amounts
+  const curr = (currency || 'NGN').toUpperCase();
+  
+  if (curr === 'NGN') {
+    if (num <= 5000) return 10; 
+    if (num <= 50000) return 25; 
+    return 50; 
   }
   // Foreign currencies
-  if (num <= 5) return 0.20;
-  return Math.max(num * 0.02, 0.50);
+  if (num <= 10) return 0.10;
+  return Math.min(num * 0.01, 2.00);
 }
 
 // 1. GET USER WALLET & ACCOUNT DETAILS
@@ -186,9 +189,8 @@ router.post('/withdraw', auth, async (req, res) => {
 
         const currentBalance = user.balances[curr] || 0;
         const fee = calculateWithdrawalFee(requestedAmount, curr);
-        const totalNeeded = requestedAmount; // The amount the user wants deducted from their wallet
+        const totalNeeded = requestedAmount; 
 
-        // Strict Insufficient Funds & Fee Validation
         if (currentBalance < totalNeeded) {
             const maxSafeWithdrawal = Math.max(currentBalance, 0);
             return res.status(400).json({ 
@@ -201,7 +203,6 @@ router.post('/withdraw', auth, async (req, res) => {
             return res.status(400).json({ message: `Amount is too low to cover the processing fee (${curr} ${fee}). Please enter a higher amount.` });
         }
 
-        // Convert currency to Naira for payout if foreign currency wallet is used
         let finalNairaPayout = netPayoutAmount;
         if (curr !== 'NGN') {
             const rate = exchangeRates[curr] || 1;
@@ -236,7 +237,7 @@ router.post('/withdraw', auth, async (req, res) => {
 
                     const transferRes = await axios.post('https://api.paystack.co/transfer', {
                         source: 'balance',
-                        amount: Math.round(finalNairaPayout * 100), // Converted to kobo
+                        amount: Math.round(finalNairaPayout * 100), 
                         recipient: recipientCode,
                         reason: `AkonniiPay Withdrawal Payout - ${curr} ${requestedAmount}`
                     }, {
@@ -283,7 +284,6 @@ router.post('/withdraw', auth, async (req, res) => {
                 });
             }
         } else {
-            // Local simulation fallback if no live secret keys are active yet during testing
             transferSuccess = true;
         }
 
@@ -291,12 +291,10 @@ router.post('/withdraw', auth, async (req, res) => {
             return res.status(400).json({ message: 'Payout transfer could not be completed by the gateway.' });
         }
 
-        // Deduct balance from user's respective currency wallet
         user.balances[curr] -= requestedAmount;
         if (curr === 'NGN') user.walletBalance = user.balances.NGN;
         await user.save();
 
-        // Record the transaction
         const transaction = new Transaction({
             user: userId,
             userId: userId,

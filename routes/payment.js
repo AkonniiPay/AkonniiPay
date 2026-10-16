@@ -11,16 +11,17 @@ function slugify(text) {
   return text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-// Fair Checkout Fee Calculation (1.5% + ₦10, capped at ₦2000)
+// Fair Checkout Fee Calculation (1.5% + ₦10, capped at ₦2000 for NGN; untouched for foreign currencies)
 function calculateCheckoutFee(amount, currency) {
   const base = parseFloat(amount) || 0;
   if (base <= 0) return 0;
 
-  if (currency === 'NGN') {
+  const curr = (currency || 'NGN').toUpperCase();
+  if (curr === 'NGN') {
     const fee = (base * 0.015) + 10;
     return Math.min(fee, 2000); 
   }
-  return base * 0.029; 
+  return base * 0.029; // Standard foreign currency gateway card fee
 }
 
 // POST /api/payment/create-link
@@ -113,7 +114,7 @@ router.get('/my-links', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/payment/link-by-slug/:slug
+// GET /api/payment/link-by-slug/:slug (Public endpoint for clients)
 router.get('/link-by-slug/:slug', async (req, res) => {
   try {
     const link = await PaymentLink.findOne({ slug: req.params.slug });
@@ -168,7 +169,7 @@ router.post('/initialize', async (req, res) => {
         amount: Number(finalChargeAmount.toFixed(2)),
         currency: currency,
         redirect_url: callbackUrl,
-        customer: { email, name },
+        customer: { email: email, name: name },
         meta: { linkId: link._id.toString() },
         customizations: {
           title: link.title,
@@ -195,7 +196,7 @@ router.post('/initialize', async (req, res) => {
       const amountInKobo = Math.round(finalChargeAmount * 100);
 
       const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
-        email,
+        email: email,
         amount: amountInKobo,
         currency: 'NGN',
         callback_url: callbackUrl,
@@ -228,12 +229,14 @@ router.post('/webhook', async (req, res) => {
     let currency = 'NGN';
 
     if (event && event.event === 'charge.success') {
-      linkId = event.data?.metadata?.linkId;
-      currency = event.data?.currency || 'NGN';
+      const data = event.data;
+      linkId = data.metadata?.linkId;
+      currency = data.currency || 'NGN';
     } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
-      if (event.data && event.data.status === 'successful') {
-        linkId = event.data?.meta?.linkId;
-        currency = event.data?.currency || 'USD';
+      const data = event.data;
+      if (data && data.status === 'successful') {
+        linkId = data.meta?.linkId;
+        currency = data.currency || 'USD';
       }
     }
 
@@ -245,14 +248,17 @@ router.post('/webhook', async (req, res) => {
 
         if (merchant) {
           const merchantCreditAmount = Number(link.amount);
+
           if (!merchant.balances) {
             merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
           }
+
           merchant.balances[currency] = (merchant.balances[currency] || 0) + merchantCreditAmount;
           await merchant.save();
         }
       }
     }
+
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error("Webhook error:", err);
@@ -260,25 +266,41 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
+// POST /api/payment/verify-and-credit
 router.post('/verify-and-credit', async (req, res) => {
   try {
     const { currency, linkId } = req.body;
-    const link = await PaymentLink.findById(linkId);
-    if (!link) return res.status(404).json({ success: false, message: "Payment link not found." });
 
-    const merchant = await User.findById(link.userId || link.user);
-    if (!merchant) return res.status(404).json({ success: false, message: "Merchant not found." });
+    const link = await PaymentLink.findById(linkId);
+    if (!link) {
+      return res.status(404).json({ success: false, message: "Payment link not found." });
+    }
+
+    const merchantId = link.userId || link.user;
+    const merchant = await User.findById(merchantId);
+
+    if (!merchant) {
+      return res.status(404).json({ success: false, message: "Merchant not found." });
+    }
 
     const curr = currency || link.currency || 'NGN';
     const creditAmount = Number(link.amount);
 
-    if (!merchant.balances) merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+    if (!merchant.balances) {
+      merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+    }
+
     merchant.balances[curr] = (merchant.balances[curr] || 0) + creditAmount;
     await merchant.save();
 
-    return res.json({ success: true, message: `Successfully credited ${curr} ${creditAmount}.`, balances: merchant.balances });
+    return res.json({
+      success: true,
+      message: `Successfully credited base amount ${curr} ${creditAmount} to merchant balance.`,
+      balances: merchant.balances
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error updating balance." });
+    console.error("Verify and credit error:", err);
+    return res.status(500).json({ success: false, message: "Server error updating balance." });
   }
 });
 
