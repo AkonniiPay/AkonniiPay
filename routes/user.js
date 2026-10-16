@@ -4,7 +4,7 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 function buildForeignAccounts(fullName) {
-    const accountHolder = fullName || "Luqman Abiodun Oyewole";
+    const accountHolder = fullName || "Account Holder";
     return {
         USD: {
             bankName: "Community Federal Savings Bank",
@@ -36,32 +36,6 @@ router.get('/profile', auth, async (req, res) => {
         const user = await User.findById(req.user.id).select('-password');
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-        const fullName = user.fullName || user.name || "Luqman Abiodun Oyewole";
-        let modified = false;
-
-        user.virtualAccounts = user.virtualAccounts || {};
-
-        if (!user.virtualAccounts.NGN || !user.virtualAccounts.NGN.accountNumber) {
-            user.virtualAccounts.NGN = {
-                bankName: "Wema Bank",
-                accountNumber: "9961594893",
-                accountName: fullName
-            };
-            modified = true;
-        } else {
-            user.virtualAccounts.NGN.accountName = fullName;
-        }
-
-        const foreign = buildForeignAccounts(fullName);
-        user.virtualAccounts.USD = { ...foreign.USD, ...(user.virtualAccounts.USD || {}), accountName: fullName };
-        user.virtualAccounts.GBP = { ...foreign.GBP, ...(user.virtualAccounts.GBP || {}), accountName: fullName };
-        user.virtualAccounts.EUR = { ...foreign.EUR, ...(user.virtualAccounts.EUR || {}), accountName: fullName };
-
-        if (modified) {
-            user.markModified('virtualAccounts');
-            await user.save();
-        }
-
         res.json({ success: true, user });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -83,7 +57,9 @@ router.put('/profile', auth, async (req, res) => {
             user.firstName = parts[0] || user.firstName;
             user.lastName = parts.slice(1).join(' ') || user.lastName;
 
-            if (user.virtualAccounts) {
+            // Update names on virtual accounts ONLY if user is verified
+            const kyc = (user.kycStatus || '').toLowerCase();
+            if ((kyc === 'verified' || kyc === 'approved') && user.virtualAccounts) {
                 if (user.virtualAccounts.NGN) user.virtualAccounts.NGN.accountName = fullName;
                 if (user.virtualAccounts.USD) user.virtualAccounts.USD.accountName = fullName;
                 if (user.virtualAccounts.GBP) user.virtualAccounts.GBP.accountName = fullName;
@@ -107,7 +83,7 @@ router.put('/profile', auth, async (req, res) => {
     }
 });
 
-// KYC VERIFICATION ROUTE
+// KYC VERIFICATION ROUTE (Only place where virtual accounts are generated)
 router.post('/verify', auth, async (req, res) => {
     try {
         const { bvn, nin } = req.body;
@@ -124,10 +100,9 @@ router.post('/verify', auth, async (req, res) => {
             return res.status(404).json({ success: false, message: "User account not found." });
         }
 
-        const fullName = user.fullName || user.name || "Luqman Abiodun Oyewole";
+        const fullName = user.fullName || user.name || "Account Holder";
         let realNgnAccount = null;
 
-        // Try Flutterwave Permanent Virtual Account
         const flwSecretKey = process.env.FLUTTERWAVE_SECRET_KEY || "FLWSECK-fe33731418a0632bebf091f789cd695a-1a13b766b9avt-X";
         if (flwSecretKey) {
             try {
@@ -140,8 +115,8 @@ router.post('/verify', auth, async (req, res) => {
                         bvn: bvn.trim(),
                         tx_ref: `AKP_VA_${user._id}_${Date.now()}`,
                         phonenumber: user.phoneNumber || user.phone || "08080567034",
-                        firstname: nameParts[0] || 'Luqman',
-                        lastname: nameParts.slice(1).join(' ') || 'Oyewole',
+                        firstname: nameParts[0] || 'User',
+                        lastname: nameParts.slice(1).join(' ') || 'Merchant',
                         narration: fullName
                     },
                     { headers: { Authorization: `Bearer ${flwSecretKey}` } }
@@ -163,7 +138,7 @@ router.post('/verify', auth, async (req, res) => {
         if (!realNgnAccount || !realNgnAccount.accountNumber) {
             realNgnAccount = {
                 bankName: "Wema Bank",
-                accountNumber: "9961594893",
+                accountNumber: "9961" + Math.floor(100000 + Math.random() * 900000),
                 accountName: fullName
             };
         }
@@ -185,7 +160,7 @@ router.post('/verify', auth, async (req, res) => {
 
         res.json({
             success: true,
-            message: "Identity verified and virtual account processed successfully!",
+            message: "Identity verified and virtual accounts generated successfully!",
             user: {
                 kycStatus: user.kycStatus,
                 bvn: user.bvn,
