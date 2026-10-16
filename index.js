@@ -12,8 +12,26 @@ const app = express();
 // 1. TRUST PROXY (Required for Render + express-rate-limit)
 app.set('trust proxy', 1);
 
-// 2. MIDDLEWARE
-app.use(cors());
+// 2. MIDDLEWARE & CORS CONFIGURATION
+const allowedOrigins = [
+  'https://akonniipay.top',
+  'https://www.akonniipay.top',
+  'https://akonniipay.onrender.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS policy'));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -32,6 +50,7 @@ app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/webhook', require('./routes/webhook'));
 app.use('/api/user', require('./routes/user'));
+app.use('/api/admin', require('./routes/admin')); // Added Admin API Routes
 
 // 5. EXPLICIT PAGE ROUTES (Express v5 Safe)
 

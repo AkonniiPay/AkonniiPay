@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AkonniiPay - Admin Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+  <!-- Login Section -->
+  <div id="loginSection" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
+      <h2 class="text-2xl font-bold text-gray-900 text-center mb-6">AkonniiPay Admin Login</h2>
+      <div id="loginError" class="hidden p-3 bg-red-100 text-red-700 text-sm rounded mb-4"></div>
+      <form id="adminLoginForm" onsubmit="handleLogin(event)">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Admin Email</label>
+          <input type="email" id="adminEmail" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-medium mb-1">Password</label>
+          <input type="password" id="adminPassword" required class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard Section -->
+  <div id="dashboardSection" class="hidden min-h-screen p-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">AkonniiPay Admin Dashboard</h1>
+        <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600">Logout</button>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white p-5 rounded-lg shadow border-l-4 border-blue-500">
+          <p class="text-sm text-gray-500">Total Users</p>
+          <p id="totalUsersCount" class="text-2xl font-bold text-gray-800">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-lg shadow border-l-4 border-green-500">
+          <p class="text-sm text-gray-500">Total NGN Wallet Holding</p>
+          <p id="totalNGN" class="text-2xl font-bold text-gray-800">₦0.00</p>
+        </div>
+        <div class="bg-white p-5 rounded-lg shadow border-l-4 border-purple-500">
+          <p class="text-sm text-gray-500">Total USD Wallet Holding</p>
+          <p id="totalUSD" class="text-2xl font-bold text-gray-800">$0.00</p>
+        </div>
+        <div class="bg-white p-5 rounded-lg shadow border-l-4 border-yellow-500">
+          <p class="text-sm text-gray-500">Total GBP / EUR Holding</p>
+          <p id="totalOther" class="text-2xl font-bold text-gray-800">£0.00 / €0.00</p>
+        </div>
+      </div>
+
+      <!-- Registered Users Table -->
+      <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4">Registered Users & Wallet Balances</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 border-b text-gray-600 text-sm">
+                <th class="p-3">Name</th>
+                <th class="p-3">Email</th>
+                <th class="p-3">NGN Balance</th>
+                <th class="p-3">USD Balance</th>
+                <th class="p-3">Joined Date</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/admin';
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('adminEmail').value;
+      const password = document.getElementById('adminPassword').value;
+
+      const res = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        localStorage.setItem('adminToken', data.token);
+        loadDashboard();
+      } else {
+        const err = document.getElementById('loginError');
+        err.textContent = data.message;
+        err.classList.remove('hidden');
+      }
+    }
+
+    async function loadDashboard() {
+      const token = localStorage.getItem('adminToken');
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('dashboardSection').classList.remove('hidden');
+
+        document.getElementById('totalUsersCount').textContent = data.stats.totalUsers;
+        document.getElementById('totalNGN').textContent = `₦${(data.stats.totalBalances.NGN || 0).toLocaleString()}`;
+        document.getElementById('totalUSD').textContent = `$${(data.stats.totalBalances.USD || 0).toFixed(2)}`;
+        document.getElementById('totalOther').textContent = `£${(data.stats.totalBalances.GBP || 0).toFixed(2)} / €${(data.stats.totalBalances.EUR || 0).toFixed(2)}`;
+
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = data.stats.userList.map(u => {
+          const b = u.balances || u.walletBalance || {};
+          return `
+            <tr class="border-b">
+              <td class="p-3 font-medium">${u.fullName || u.name || 'N/A'}</td>
+              <td class="p-3">${u.email}</td>
+              <td class="p-3 text-green-600 font-semibold">₦${(b.NGN || 0).toLocaleString()}</td>
+              <td class="p-3 text-blue-600 font-semibold">$${(b.USD || 0).toFixed(2)}</td>
+              <td class="p-3 text-sm text-gray-500">${new Date(u.createdAt).toLocaleDateString()}</td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        logout();
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('adminToken');
+      document.getElementById('loginSection').classList.remove('hidden');
+      document.getElementById('dashboardSection').classList.add('hidden');
+    }
+
+    if (localStorage.getItem('adminToken')) loadDashboard();
+  </script>
+</body>
+</html>
