@@ -45,7 +45,7 @@ router.post('/login', (req, res) => {
   return res.status(401).json({ success: false, message: 'Invalid Admin credentials' });
 });
 
-// 2. Comprehensive Admin Stats & Verification Metrics (Safeguarded)
+// 2. Comprehensive Admin Stats & Verification Metrics
 router.get('/stats', verifyAdmin, async (req, res) => {
   try {
     const totalUsers = await User.countDocuments().catch(() => 0);
@@ -148,7 +148,7 @@ router.post('/users/adjust-balance', verifyAdmin, async (req, res) => {
   }
 });
 
-// 5. Toggle User Status
+// 5. Toggle User Status (Suspend / Activate)
 router.post('/users/toggle-status', verifyAdmin, async (req, res) => {
   const { userId, status } = req.body;
 
@@ -159,19 +159,23 @@ router.post('/users/toggle-status', verifyAdmin, async (req, res) => {
     user.status = status;
     await user.save();
 
-    res.json({ success: true, message: `User status changed to ${status}` });
+    res.json({ success: true, message: `User status successfully changed to ${status}` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// 6. Delete All Accounts
-router.delete('/users/delete-all', verifyAdmin, async (req, res) => {
+// 6. Delete Specific User Account
+router.delete('/users/:userId', verifyAdmin, async (req, res) => {
   try {
-    await User.deleteMany({});
-    await Transaction.deleteMany({});
-    await PaymentLink.deleteMany({});
-    res.json({ success: true, message: 'All user accounts and related records deleted successfully.' });
+    const { userId } = req.params;
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    await Transaction.deleteMany({ user: userId });
+    await PaymentLink.deleteMany({ user: userId });
+
+    res.json({ success: true, message: 'User account and associated records deleted successfully.' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

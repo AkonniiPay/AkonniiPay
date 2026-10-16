@@ -15,23 +15,19 @@ router.post('/register', async (req, res) => {
 
     const cleanEmail = email.toLowerCase().trim();
 
-    // Check if user already exists
     let user = await User.findOne({ email: cleanEmail });
     if (user) {
       return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
     }
 
-    // Split Full Name into First and Last Name
-    const cleanName = (name || 'Luqman Abiodun Oyewole').trim();
+    const cleanName = (name || 'Merchant User').trim();
     const nameParts = cleanName.split(' ');
     const firstName = nameParts[0] || 'Merchant';
     const lastName = nameParts.slice(1).join(' ') || 'User';
 
-    // Hash Password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Build User Object with EXACT Mongoose Schema Keys: fullName & phoneNumber
     user = new User({
       fullName: cleanName,
       name: cleanName,
@@ -44,13 +40,13 @@ router.post('/register', async (req, res) => {
       phone: phone || '+2348080567034',
       occupation: occupation || 'Software Developer',
       kycStatus: 'Pending Verification',
+      status: 'Active',
       balances: { NGN: 0, USD: 0, GBP: 0 },
       virtualAccounts: {}
     });
 
     await user.save();
 
-    // Sign JWT Token
     const payload = { id: user._id, email: user.email };
     const token = jwt.sign(payload, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
 
@@ -89,6 +85,11 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid email or password.' });
+    }
+
+    // CHECK IF ACCOUNT IS SUSPENDED
+    if (user.status === 'Suspended') {
+      return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact support.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
