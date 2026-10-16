@@ -45,28 +45,30 @@ router.post('/login', (req, res) => {
   return res.status(401).json({ success: false, message: 'Invalid Admin credentials' });
 });
 
-// 2. Comprehensive Admin Stats & Verification Metrics
+// 2. Comprehensive Admin Stats & Verification Metrics (Safeguarded)
 router.get('/stats', verifyAdmin, async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-    const users = await User.find({}, 'name fullName email balances walletBalance status kycStatus createdAt updatedAt').lean();
-    const recentTransactions = await Transaction.find().populate('user', 'fullName email').sort({ createdAt: -1 }).limit(15).lean();
+    const totalUsers = await User.countDocuments().catch(() => 0);
+    const users = await User.find({}, 'name fullName email balances walletBalance status kycStatus createdAt updatedAt').lean().catch(() => []);
+    const recentTransactions = await Transaction.find().populate('user', 'fullName email').sort({ createdAt: -1 }).limit(15).lean().catch(() => []);
 
     let totalBalances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     let kycMetrics = { verified: 0, pending: 0, unverified: 0 };
 
-    users.forEach(u => {
-      const b = u.balances || u.walletBalance || {};
-      totalBalances.NGN += b.NGN || 0;
-      totalBalances.USD += b.USD || 0;
-      totalBalances.GBP += b.GBP || 0;
-      totalBalances.EUR += b.EUR || 0;
+    if (Array.isArray(users)) {
+      users.forEach(u => {
+        const b = u.balances || u.walletBalance || {};
+        totalBalances.NGN += Number(b.NGN || 0);
+        totalBalances.USD += Number(b.USD || 0);
+        totalBalances.GBP += Number(b.GBP || 0);
+        totalBalances.EUR += Number(b.EUR || 0);
 
-      const kyc = (u.kycStatus || 'Unverified').toLowerCase();
-      if (kyc === 'verified' || kyc === 'approved') kycMetrics.verified++;
-      else if (kyc === 'pending' || kyc === 'submitted' || kyc === 'in_review') kycMetrics.pending++;
-      else kycMetrics.unverified++;
-    });
+        const kyc = (u.kycStatus || 'unverified').toLowerCase();
+        if (kyc === 'verified' || kyc === 'approved') kycMetrics.verified++;
+        else if (kyc === 'pending' || kyc === 'submitted' || kyc === 'in_review') kycMetrics.pending++;
+        else kycMetrics.unverified++;
+      });
+    }
 
     res.json({
       success: true,
@@ -74,11 +76,12 @@ router.get('/stats', verifyAdmin, async (req, res) => {
         totalUsers,
         totalBalances,
         kycMetrics,
-        userList: users,
-        recentTransactions
+        userList: users || [],
+        recentTransactions: recentTransactions || []
       }
     });
   } catch (error) {
+    console.error("Admin Stats Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -90,8 +93,8 @@ router.get('/users/:userId/activity', verifyAdmin, async (req, res) => {
     const user = await User.findById(userId).lean();
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const paymentLinks = await PaymentLink.find({ user: userId }).sort({ createdAt: -1 }).lean();
-    const transactions = await Transaction.find({ user: userId }).sort({ createdAt: -1 }).lean();
+    const paymentLinks = await PaymentLink.find({ user: userId }).sort({ createdAt: -1 }).lean().catch(() => []);
+    const transactions = await Transaction.find({ user: userId }).sort({ createdAt: -1 }).lean().catch(() => []);
 
     res.json({
       success: true,
@@ -119,7 +122,7 @@ router.post('/users/adjust-balance', verifyAdmin, async (req, res) => {
     const balKey = user.balances ? 'balances' : 'walletBalance';
     if (!user[balKey]) user[balKey] = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
 
-    const currentBal = user[balKey][currency] || 0;
+    const currentBal = Number(user[balKey][currency] || 0);
     const numAmount = parseFloat(amount);
 
     if (type === 'subtract' && currentBal < numAmount) {
@@ -177,8 +180,8 @@ router.delete('/users/delete-all', verifyAdmin, async (req, res) => {
 // 7. Get Pending Withdrawals
 router.get('/withdrawals', verifyAdmin, async (req, res) => {
   try {
-    const withdrawals = await Transaction.find({ type: 'withdrawal', status: 'pending' }).populate('user', 'fullName email').lean();
-    res.json({ success: true, withdrawals });
+    const withdrawals = await Transaction.find({ type: 'withdrawal', status: 'pending' }).populate('user', 'fullName email').lean().catch(() => []);
+    res.json({ success: true, withdrawals: withdrawals || [] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -209,7 +212,7 @@ router.post('/withdrawals/action', verifyAdmin, async (req, res) => {
       if (user) {
         const balKey = user.balances ? 'balances' : 'walletBalance';
         if (user[balKey]) {
-          user[balKey][tx.currency] = (user[balKey][tx.currency] || 0) + tx.amount;
+          user[balKey][tx.currency] = Number(user[balKey][tx.currency] || 0) + Number(tx.amount);
           user.markModified(balKey);
           await user.save();
         }
