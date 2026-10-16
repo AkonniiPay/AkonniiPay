@@ -26,12 +26,16 @@ const commonBankCodes = {
   'uba': '033'
 };
 
+// Updated realistic withdrawal fee calculation (e.g. ~₦10 fee for ₦200, scaling up organically)
 function calculateWithdrawalFee(amount, currency) {
   const num = Number(amount);
   if (currency === 'NGN') {
-    return Math.max(num * 0.015, 50);
+    if (num <= 500) return 10; // ₦10 fee for small withdrawals like ₦200
+    return Math.max(num * 0.015, 20); // 1.5% or minimum ₦20 for larger amounts
   }
-  return Math.max(num * 0.02, 1);
+  // Foreign currencies
+  if (num <= 5) return 0.20;
+  return Math.max(num * 0.02, 0.50);
 }
 
 // 1. GET USER WALLET & ACCOUNT DETAILS
@@ -101,7 +105,6 @@ router.post('/create-virtual-accounts', auth, async (req, res) => {
         let gbpAccount = { bankName: 'Barclays Bank UK', accountNumber: '70482910', sortCode: '20-04-15' };
         let eurAccount = { bankName: 'BNP Paribas', accountNumber: 'FR76300040000...', iban: 'FR76300040000...' };
 
-        // Attempt Paystack DVA creation if key exists
         if (secretKey) {
             try {
                 const customerRes = await axios.post('https://api.paystack.co/customer', {
@@ -155,10 +158,10 @@ router.post('/create-virtual-accounts', auth, async (req, res) => {
     }
 });
 
-// 4. AUTOMATED WITHDRAWAL WITH PAYSTACK PAYOUT
+// 4. AUTOMATED WITHDRAWAL WITH PAYSTACK & FLUTTERWAVE PAYOUTS + STRICT FEE VALIDATION
 router.post('/withdraw', auth, async (req, res) => {
     try {
-        const { amount, bankName, accountNumber, accountName, currency } = req.body;
+        const { amount, bankName, accountNumber, accountName, currency, gateway } = req.body;
 
         const requestedAmount = Number(amount);
         if (!requestedAmount || requestedAmount <= 0) {
@@ -182,18 +185,23 @@ router.post('/withdraw', auth, async (req, res) => {
         }
 
         const currentBalance = user.balances[curr] || 0;
-
-        if (currentBalance < requestedAmount) {
-            return res.status(400).json({ message: `Insufficient ${curr} wallet balance. Available: ${curr === 'NGN' ? '₦' : '$'}${currentBalance}` });
-        }
-
         const fee = calculateWithdrawalFee(requestedAmount, curr);
-        const netPayoutAmount = requestedAmount - fee;
+        const totalNeeded = requestedAmount; // The amount the user wants deducted from their wallet
 
-        if (netPayoutAmount <= 0) {
-            return res.status(400).json({ message: `Amount is too low to cover processing fee (${curr} ${fee}).` });
+        // Strict Insufficient Funds & Fee Validation
+        if (currentBalance < totalNeeded) {
+            const maxSafeWithdrawal = Math.max(currentBalance, 0);
+            return res.status(400).json({ 
+                message: `Insufficient ${curr} balance. You entered ${curr} ${requestedAmount}, but your balance is ${curr} ${currentBalance.toLocaleString()}. (Note: A processing fee of ${curr} ${fee} applies).` 
+            });
         }
 
+        const netPayoutAmount = requestedAmount - fee;
+        if (netPayoutAmount <= 0) {
+            return res.status(400).json({ message: `Amount is too low to cover the processing fee (${curr} ${fee}). Please enter a higher amount.` });
+        }
+
+        // Convert currency to Naira for payout if foreign currency wallet is used
         let finalNairaPayout = netPayoutAmount;
         if (curr !== 'NGN') {
             const rate = exchangeRates[curr] || 1;
@@ -201,53 +209,98 @@ router.post('/withdraw', auth, async (req, res) => {
         }
 
         const secretKey = process.env.PAYSTACK_SECRET_KEY;
+        const flwSecretKey = process.env.FLW_SECRET_KEY;
+        const activeGateway = gateway || (secretKey ? 'paystack' : 'flutterwave');
+
         let payoutReference = 'WD_' + Date.now();
+        let transferSuccess = false;
 
-        if (secretKey) {
-          try {
-            const normalizedBank = bankName.toLowerCase().trim();
-            const bankCode = commonBankCodes[normalizedBank] || '999992';
+        // --- PAYSTACK TRANSFER EXECUTION ---
+        if (activeGateway === 'paystack' && secretKey) {
+            try {
+                const normalizedBank = bankName.toLowerCase().trim();
+                const bankCode = commonBankCodes[normalizedBank] || '999992';
 
-            const recipientRes = await axios.post('https://api.paystack.co/transferrecipient', {
-              type: 'nuban',
-              name: accountName || user.name || 'Merchant Payout',
-              account_number: accountNumber,
-              bank_code: bankCode,
-              currency: 'NGN'
-            }, {
-              headers: { Authorization: `Bearer ${secretKey}` }
-            });
+                const recipientRes = await axios.post('https://api.paystack.co/transferrecipient', {
+                    type: 'nuban',
+                    name: accountName || user.name || 'Merchant Payout',
+                    account_number: accountNumber,
+                    bank_code: bankCode,
+                    currency: 'NGN'
+                }, {
+                    headers: { Authorization: `Bearer ${secretKey}` }
+                });
 
-            if (recipientRes.data && recipientRes.data.status) {
-              const recipientCode = recipientRes.data.data.recipient_code;
+                if (recipientRes.data && recipientRes.data.status) {
+                    const recipientCode = recipientRes.data.data.recipient_code;
 
-              const transferRes = await axios.post('https://api.paystack.co/transfer', {
-                source: 'balance',
-                amount: Math.round(finalNairaPayout * 100),
-                recipient: recipientCode,
-                reason: `AkonniiPay Withdrawal Payout - ${curr} ${requestedAmount}`
-              }, {
-                headers: { Authorization: `Bearer ${secretKey}` }
-              });
+                    const transferRes = await axios.post('https://api.paystack.co/transfer', {
+                        source: 'balance',
+                        amount: Math.round(finalNairaPayout * 100), // Converted to kobo
+                        recipient: recipientCode,
+                        reason: `AkonniiPay Withdrawal Payout - ${curr} ${requestedAmount}`
+                    }, {
+                        headers: { Authorization: `Bearer ${secretKey}` }
+                    });
 
-              if (transferRes.data && transferRes.data.status) {
-                payoutReference = transferRes.data.data.reference;
-              }
+                    if (transferRes.data && transferRes.data.status) {
+                        payoutReference = transferRes.data.data.reference || payoutReference;
+                        transferSuccess = true;
+                    }
+                }
+            } catch (payoutErr) {
+                console.error("Paystack Transfer Notice:", payoutErr.response?.data || payoutErr.message);
+                return res.status(400).json({ 
+                    message: payoutErr.response?.data?.message || "Paystack payout failed. Please verify bank account details." 
+                });
             }
-          } catch (payoutErr) {
-            console.error("Paystack Transfer Notice:", payoutErr.response?.data || payoutErr.message);
-          }
+        } 
+        // --- FLUTTERWAVE TRANSFER EXECUTION ---
+        else if (flwSecretKey) {
+            try {
+                const normalizedBank = bankName.toLowerCase().trim();
+                const flwBankCode = commonBankCodes[normalizedBank] || '035';
+
+                const flwRes = await axios.post('https://api.flutterwave.com/v3/transfers', {
+                    account_bank: flwBankCode,
+                    account_number: accountNumber,
+                    amount: finalNairaPayout,
+                    narration: `AkonniiPay Payout - ${curr} ${requestedAmount}`,
+                    currency: "NGN",
+                    reference: payoutReference,
+                    beneficiary_name: accountName || user.name || 'Merchant'
+                }, {
+                    headers: { Authorization: `Bearer ${flwSecretKey}` }
+                });
+
+                if (flwRes.data && flwRes.data.status === 'success') {
+                    transferSuccess = true;
+                }
+            } catch (flwErr) {
+                console.error("Flutterwave Transfer Notice:", flwErr.response?.data || flwErr.message);
+                return res.status(400).json({ 
+                    message: flwErr.response?.data?.message || "Flutterwave payout failed. Please check bank details." 
+                });
+            }
+        } else {
+            // Local simulation fallback if no live secret keys are active yet during testing
+            transferSuccess = true;
         }
 
-        // Deduct balance
+        if (!transferSuccess) {
+            return res.status(400).json({ message: 'Payout transfer could not be completed by the gateway.' });
+        }
+
+        // Deduct balance from user's respective currency wallet
         user.balances[curr] -= requestedAmount;
         if (curr === 'NGN') user.walletBalance = user.balances.NGN;
         await user.save();
 
+        // Record the transaction
         const transaction = new Transaction({
             user: userId,
             userId: userId,
-            gateway: 'Bank Transfer',
+            gateway: activeGateway === 'paystack' ? 'Paystack' : 'Flutterwave',
             type: 'withdrawal',
             amount: requestedAmount,
             fee: fee,
@@ -255,14 +308,14 @@ router.post('/withdraw', auth, async (req, res) => {
             currency: curr,
             status: 'completed',
             reference: payoutReference,
-            description: `Withdrawal of ${curr} ${requestedAmount} (Fee: ${curr} ${fee.toFixed(2)}, Net Payout: ₦${finalNairaPayout.toLocaleString()}) to ${accountName || user.name} (${bankName} - ${accountNumber})`
+            description: `Withdrawal of ${curr} ${requestedAmount} (Fee: ${curr} ${fee}, Net Payout: ₦${finalNairaPayout.toLocaleString()}) to ${accountName || user.name} (${bankName} - ${accountNumber})`
         });
 
         await transaction.save();
 
         res.json({
             success: true,
-            message: `Successfully processed withdrawal of ${curr} ${requestedAmount.toLocaleString()}! Fee deducted: ${curr} ${fee.toFixed(2)}. Net payout: ₦${finalNairaPayout.toLocaleString()} sent to ${bankName} (${accountNumber}).`,
+            message: `Successfully processed withdrawal of ${curr} ${requestedAmount.toLocaleString()}! Fee: ${curr} ${fee}. Net payout of ₦${finalNairaPayout.toLocaleString()} sent to ${bankName} (${accountNumber}).`,
             reference: payoutReference,
             balances: user.balances
         });
