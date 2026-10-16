@@ -128,7 +128,7 @@
           <h3 class="text-xl font-bold text-gray-900" id="activityUserName">User Activity Details</h3>
           <p class="text-xs text-gray-500" id="activityUserEmail"></p>
         </div>
-        <button id="closeActivityBtn" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+        <button type="button" id="closeActivityBtn" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
       </div>
 
       <div class="mb-6">
@@ -283,7 +283,7 @@
 
         tr.innerHTML = `
           <td class="p-3">
-            <p class="font-medium text-gray-900 userNameCell"></p>
+            <p class="font-medium text-gray-950 userNameCell"></p>
             <p class="text-xs text-gray-500">${u.email}</p>
           </td>
           <td class="p-3">${kycBadge}</td>
@@ -305,7 +305,7 @@
 
         tr.querySelector('.userNameCell').textContent = name;
 
-        // Attach safe event handlers
+        // Attach safe event listeners directly
         tr.querySelector('.activity-btn').addEventListener('click', () => viewUserActivity(u._id));
         tr.querySelector('.adjust-btn').addEventListener('click', () => openAdjustModal(u._id, name));
         tr.querySelector('.suspend-btn').addEventListener('click', () => toggleUserStatus(u._id, isSuspended ? 'Active' : 'Suspended'));
@@ -490,8 +490,8 @@
 
     function logout() {
       localStorage.removeItem('adminToken');
-      document.getElementById('loginSection').classList.remove('hidden');
       document.getElementById('dashboardSection').classList.add('hidden');
+      document.getElementById('loginSection').classList.remove('hidden');
     }
   </script>
 </body>
