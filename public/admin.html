@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AkonniiPay - Admin Portal</title>
+  <title>AkonniiPay - Interactive Admin Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
@@ -27,15 +27,15 @@
     </div>
   </div>
 
-  <!-- Dashboard Section -->
+  <!-- Main Dashboard -->
   <div id="dashboardSection" class="hidden min-h-screen p-6">
     <div class="max-w-7xl mx-auto">
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold text-gray-900">AkonniiPay Admin Dashboard</h1>
-        <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600">Logout</button>
+        <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 font-semibold">Logout</button>
       </div>
 
-      <!-- Stats Cards -->
+      <!-- Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white p-5 rounded-lg shadow border-l-4 border-blue-500">
           <p class="text-sm text-gray-500">Total Users</p>
@@ -55,24 +55,86 @@
         </div>
       </div>
 
-      <!-- Registered Users Table -->
+      <!-- Pending Withdrawals Queue -->
       <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 class="text-xl font-bold mb-4">Registered Users & Wallet Balances</h2>
+        <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <span>Pending Withdrawal Requests</span>
+          <span id="withdrawalBadge" class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full hidden">0</span>
+        </h2>
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-gray-50 border-b text-gray-600 text-sm">
-                <th class="p-3">Name</th>
-                <th class="p-3">Email</th>
+                <th class="p-3">User</th>
+                <th class="p-3">Amount</th>
+                <th class="p-3">Bank Details</th>
+                <th class="p-3">Requested Date</th>
+                <th class="p-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="withdrawalsTableBody">
+              <tr><td colspan="5" class="p-4 text-center text-gray-500">No pending withdrawals found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- User Management Table -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Registered Users & Wallet Actions</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 border-b text-gray-600 text-sm">
+                <th class="p-3">Name & Email</th>
                 <th class="p-3">NGN Balance</th>
                 <th class="p-3">USD Balance</th>
-                <th class="p-3">Joined Date</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody id="userTableBody"></tbody>
           </table>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Wallet Adjustment Modal -->
+  <div id="adjustModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+      <h3 class="text-xl font-bold mb-4" id="modalTitle">Adjust User Wallet</h3>
+      <form onsubmit="submitAdjustment(event)">
+        <input type="hidden" id="modalUserId">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Action Type</label>
+          <select id="modalActionType" class="w-full border p-2 rounded">
+            <option value="add">Credit (Add Funds)</option>
+            <option value="subtract">Debit (Deduct Funds)</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Currency</label>
+          <select id="modalCurrency" class="w-full border p-2 rounded">
+            <option value="NGN">NGN (₦)</option>
+            <option value="USD">USD ($)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="EUR">EUR (€)</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Amount</label>
+          <input type="number" step="0.01" id="modalAmount" required class="w-full border p-2 rounded">
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-medium mb-1">Reason / Note</label>
+          <input type="text" id="modalNote" placeholder="e.g. Manual top-up / refund" class="w-full border p-2 rounded">
+        </div>
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border rounded text-gray-600">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Submit Adjustment</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -119,22 +181,134 @@
         document.getElementById('totalUSD').textContent = `$${(data.stats.totalBalances.USD || 0).toFixed(2)}`;
         document.getElementById('totalOther').textContent = `£${(data.stats.totalBalances.GBP || 0).toFixed(2)} / €${(data.stats.totalBalances.EUR || 0).toFixed(2)}`;
 
+        // Render Users
         const tbody = document.getElementById('userTableBody');
         tbody.innerHTML = data.stats.userList.map(u => {
           const b = u.balances || u.walletBalance || {};
+          const isSuspended = u.status === 'Suspended';
           return `
             <tr class="border-b">
-              <td class="p-3 font-medium">${u.fullName || u.name || 'N/A'}</td>
-              <td class="p-3">${u.email}</td>
-              <td class="p-3 text-green-600 font-semibold">₦${(b.NGN || 0).toLocaleString()}</td>
-              <td class="p-3 text-blue-600 font-semibold">$${(b.USD || 0).toFixed(2)}</td>
-              <td class="p-3 text-sm text-gray-500">${new Date(u.createdAt).toLocaleDateString()}</td>
+              <td class="p-3">
+                <p class="font-medium text-gray-900">${u.fullName || u.name || 'N/A'}</p>
+                <p class="text-xs text-gray-500">${u.email}</p>
+              </td>
+              <td class="p-3 font-semibold text-green-600">₦${(b.NGN || 0).toLocaleString()}</td>
+              <td class="p-3 font-semibold text-blue-600">$${(b.USD || 0).toFixed(2)}</td>
+              <td class="p-3">
+                <span class="px-2 py-1 text-xs rounded-full ${isSuspended ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+                  ${u.status || 'Active'}
+                </span>
+              </td>
+              <td class="p-3 text-center space-x-2">
+                <button onclick="openAdjustModal('${u._id}', '${u.fullName || u.name}')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-xs font-semibold hover:bg-blue-100">
+                  Adjust Wallet
+                </button>
+                <button onclick="toggleUserStatus('${u._id}', '${isSuspended ? 'Active' : 'Suspended'}')" class="${isSuspended ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'} border px-3 py-1 rounded text-xs font-semibold">
+                  ${isSuspended ? 'Activate' : 'Suspend'}
+                </button>
+              </td>
             </tr>
           `;
         }).join('');
+
+        loadWithdrawals();
       } else {
         logout();
       }
+    }
+
+    async function loadWithdrawals() {
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API_BASE}/withdrawals`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (data.success && data.withdrawals.length > 0) {
+        document.getElementById('withdrawalBadge').textContent = data.withdrawals.length;
+        document.getElementById('withdrawalBadge').classList.remove('hidden');
+
+        document.getElementById('withdrawalsTableBody').innerHTML = data.withdrawals.map(w => `
+          <tr class="border-b">
+            <td class="p-3 font-medium">${w.user ? w.user.fullName : 'N/A'} (${w.user ? w.user.email : ''})</td>
+            <td class="p-3 font-bold text-gray-900">${w.currency} ${w.amount.toLocaleString()}</td>
+            <td class="p-3 text-sm text-gray-600">${w.description || 'N/A'}</td>
+            <td class="p-3 text-xs text-gray-500">${new Date(w.createdAt).toLocaleDateString()}</td>
+            <td class="p-3 text-center space-x-2">
+              <button onclick="processWithdrawal('${w._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-green-700">Approve</button>
+              <button onclick="processWithdrawal('${w._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-red-700">Reject & Refund</button>
+            </td>
+          </tr>
+        `).join('');
+      } else {
+        document.getElementById('withdrawalsTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No pending withdrawals found.</td></tr>';
+      }
+    }
+
+    function openAdjustModal(userId, name) {
+      document.getElementById('modalUserId').value = userId;
+      document.getElementById('modalTitle').textContent = `Adjust Balance for ${name}`;
+      document.getElementById('adjustModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('adjustModal').classList.add('hidden');
+    }
+
+    async function submitAdjustment(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('adminToken');
+      const body = {
+        userId: document.getElementById('modalUserId').value,
+        type: document.getElementById('modalActionType').value,
+        currency: document.getElementById('modalCurrency').value,
+        amount: document.getElementById('modalAmount').value,
+        note: document.getElementById('modalNote').value
+      };
+
+      const res = await fetch(`${API_BASE}/users/adjust-balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      alert(data.message);
+      if (data.success) {
+        closeModal();
+        loadDashboard();
+      }
+    }
+
+    async function toggleUserStatus(userId, status) {
+      if (!confirm(`Are you sure you want to change user status to ${status}?`)) return;
+      const token = localStorage.getItem('adminToken');
+
+      const res = await fetch(`${API_BASE}/users/toggle-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ userId, status })
+      });
+
+      const data = await res.json();
+      alert(data.message);
+      if (data.success) loadDashboard();
+    }
+
+    async function processWithdrawal(transactionId, action) {
+      const reason = action === 'reject' ? prompt('Enter reason for rejection:') : '';
+      if (action === 'reject' && reason === null) return;
+
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API_BASE}/withdrawals/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ transactionId, action, reason })
+      });
+
+      const data = await res.json();
+      alert(data.message);
+      if (data.success) loadDashboard();
     }
 
     function logout() {
