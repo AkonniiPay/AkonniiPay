@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const PaymentLink = require('../models/PaymentLink');
 const jwt = require('jsonwebtoken');
 
 // Middleware to protect admin routes
@@ -44,20 +45,28 @@ router.post('/login', (req, res) => {
   return res.status(401).json({ success: false, message: 'Invalid Admin credentials' });
 });
 
-// 2. Stats & Users List
+// 2. Comprehensive Admin Stats & Verification Metrics
 router.get('/stats', verifyAdmin, async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
-    const users = await User.find({}, 'name fullName email balances walletBalance status createdAt');
-    const recentTransactions = await Transaction.find().sort({ createdAt: -1 }).limit(20);
+    const users = await User.find({}, 'name fullName email balances walletBalance status kycStatus createdAt updatedAt').lean();
+    const recentTransactions = await Transaction.find().populate('user', 'fullName email').sort({ createdAt: -1 }).limit(15).lean();
 
     let totalBalances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+    let kycMetrics = { verified: 0, pending: 0, unverified: 0 };
+
     users.forEach(u => {
       const b = u.balances || u.walletBalance || {};
       totalBalances.NGN += b.NGN || 0;
       totalBalances.USD += b.USD || 0;
       totalBalances.GBP += b.GBP || 0;
       totalBalances.EUR += b.EUR || 0;
+
+      // Track KYC Verification states
+      const kyc = (u.kycStatus || 'Unverified').toLowerCase();
+      if (kyc === 'verified' || kyc === 'approved') kycMetrics.verified++;
+      else if (kyc === 'pending' || kyc === 'submitted' || kyc === 'in_review') kycMetrics.pending++;
+      else kycMetrics.unverified++;
     });
 
     res.json({
@@ -65,6 +74,7 @@ router.get('/stats', verifyAdmin, async (req, res) => {
       stats: {
         totalUsers,
         totalBalances,
+        kycMetrics,
         userList: users,
         recentTransactions
       }
@@ -74,9 +84,34 @@ router.get('/stats', verifyAdmin, async (req, res) => {
   }
 });
 
-// 3. Manual Wallet Adjustment (Credit / Debit User Balance)
+// 3. User Deep-Dive (View Activity, Payment Links, Transactions)
+router.get('/users/:userId/activity', verifyAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const paymentLinks = await PaymentLink.find({ user: userId }).sort({ createdAt: -1 }).lean();
+    const transactions = await Transaction.find({ user: userId }).sort({ createdAt: -1 }).lean();
+
+    res.json({
+      success: true,
+      user,
+      activity: {
+        totalLinksCreated: paymentLinks.length,
+        totalTransactions: transactions.length,
+        paymentLinks,
+        transactions
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 4. Adjust User Balance
 router.post('/users/adjust-balance', verifyAdmin, async (req, res) => {
-  const { userId, currency, amount, type, note } = req.body; // type: 'add' or 'subtract'
+  const { userId, currency, amount, type, note } = req.body;
 
   try {
     const user = await User.findById(userId);
@@ -96,7 +131,6 @@ router.post('/users/adjust-balance', verifyAdmin, async (req, res) => {
     user.markModified(balKey);
     await user.save();
 
-    // Log adjustment transaction
     await Transaction.create({
       user: userId,
       type: type === 'add' ? 'admin_credit' : 'admin_debit',
@@ -112,9 +146,9 @@ router.post('/users/adjust-balance', verifyAdmin, async (req, res) => {
   }
 });
 
-// 4. Toggle User Status (Suspend / Activate)
+// 5. Toggle User Status
 router.post('/users/toggle-status', verifyAdmin, async (req, res) => {
-  const { userId, status } = req.body; // status: 'Active' or 'Suspended'
+  const { userId, status } = req.body;
 
   try {
     const user = await User.findById(userId);
@@ -129,17 +163,17 @@ router.post('/users/toggle-status', verifyAdmin, async (req, res) => {
   }
 });
 
-// 5. Get Pending Withdrawals
+// 6. Get Pending Withdrawals
 router.get('/withdrawals', verifyAdmin, async (req, res) => {
   try {
-    const withdrawals = await Transaction.find({ type: 'withdrawal', status: 'pending' }).populate('user', 'fullName email');
+    const withdrawals = await Transaction.find({ type: 'withdrawal', status: 'pending' }).populate('user', 'fullName email').lean();
     res.json({ success: true, withdrawals });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// 6. Approve / Reject Withdrawal
+// 7. Process Withdrawal
 router.post('/withdrawals/action', verifyAdmin, async (req, res) => {
   const { transactionId, action, reason } = req.body;
 
@@ -160,7 +194,6 @@ router.post('/withdrawals/action', verifyAdmin, async (req, res) => {
       tx.failureReason = reason || 'Rejected by Admin';
       await tx.save();
 
-      // Refund balance
       const user = await User.findById(tx.user);
       if (user) {
         const balKey = user.balances ? 'balances' : 'walletBalance';
