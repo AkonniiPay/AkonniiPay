@@ -29,13 +29,20 @@ const verifyAdmin = (req, res, next) => {
   }
 };
 
-// 1. Admin Login
+// 1. Admin Login (RESTORED & SECURED)
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
 
-  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: 'Please provide email and password' });
+  }
+
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@akonniipay.top';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+  if (email.toLowerCase().trim() === adminEmail.toLowerCase().trim() && password === adminPassword) {
     const token = jwt.sign(
-      { email, isAdmin: true },
+      { email: adminEmail, isAdmin: true },
       process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'super_secret_jwt_key',
       { expiresIn: '24h' }
     );
