@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AkonniiPay - Admin Portal & User Analytics</title>
+  <title>AkonniiPay Admin Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
 
-  <!-- Login Section -->
+  <!-- Login Form -->
   <div id="loginSection" class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
       <h2 class="text-2xl font-bold text-gray-900 text-center mb-6">AkonniiPay Admin Login</h2>
@@ -27,13 +27,13 @@
     </div>
   </div>
 
-  <!-- Main Dashboard -->
+  <!-- Dashboard -->
   <div id="dashboardSection" class="hidden min-h-screen p-6">
     <div class="max-w-7xl mx-auto">
       <div class="flex justify-between items-center mb-8">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">AkonniiPay Admin Dashboard</h1>
-          <p class="text-sm text-gray-500">Real-time user activities, verification metrics, & wallet management</p>
+          <p class="text-sm text-gray-500">Platform Management & User Activity</p>
         </div>
         <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 font-semibold">Logout</button>
       </div>
@@ -41,7 +41,7 @@
       <!-- Overview Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white p-5 rounded-lg shadow border-l-4 border-blue-500">
-          <p class="text-sm text-gray-500">Total Registered Users</p>
+          <p class="text-sm text-gray-500">Total Users</p>
           <p id="totalUsersCount" class="text-2xl font-bold text-gray-800">0</p>
         </div>
         <div class="bg-white p-5 rounded-lg shadow border-l-4 border-green-500">
@@ -58,31 +58,9 @@
         </div>
       </div>
 
-      <!-- KYC Verification Funnel -->
+      <!-- Pending Withdrawals -->
       <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">KYC Verification Overview</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-          <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
-            <p class="text-sm font-semibold text-green-700">Fully Verified Users</p>
-            <p id="kycVerifiedCount" class="text-3xl font-extrabold text-green-800 mt-1">0</p>
-          </div>
-          <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-            <p class="text-sm font-semibold text-yellow-700">In Progress / Pending Verification</p>
-            <p id="kycPendingCount" class="text-3xl font-extrabold text-yellow-800 mt-1">0</p>
-          </div>
-          <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-            <p class="text-sm font-semibold text-gray-600">Unverified Users</p>
-            <p id="kycUnverifiedCount" class="text-3xl font-extrabold text-gray-800 mt-1">0</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pending Withdrawals Queue -->
-      <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <span>Pending Withdrawal Requests</span>
-          <span id="withdrawalBadge" class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full hidden">0</span>
-        </h2>
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Pending Withdrawal Requests</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
@@ -101,49 +79,23 @@
         </div>
       </div>
 
-      <!-- User Management & Activity Tracking Table -->
+      <!-- Users List -->
       <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Registered Users & Activity Tracker</h2>
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Registered Users & Wallet Actions</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-gray-50 border-b text-gray-600 text-sm">
                 <th class="p-3">Name & Email</th>
-                <th class="p-3">KYC Status</th>
                 <th class="p-3">NGN Balance</th>
                 <th class="p-3">USD Balance</th>
-                <th class="p-3">Account Status</th>
+                <th class="p-3">Status</th>
                 <th class="p-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody id="userTableBody"></tbody>
           </table>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- User Activity Inspection Modal -->
-  <div id="activityModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
-      <div class="flex justify-between items-center mb-4 border-b pb-3">
-        <div>
-          <h3 class="text-xl font-bold text-gray-900" id="activityUserName">User Activity Details</h3>
-          <p class="text-xs text-gray-500" id="activityUserEmail"></p>
-        </div>
-        <button onclick="closeActivityModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-      </div>
-
-      <!-- Payment Links Created -->
-      <div class="mb-6">
-        <h4 class="font-bold text-gray-800 mb-2">Created Payment Links</h4>
-        <div id="activityLinksList" class="space-y-2 max-h-40 overflow-y-auto border p-3 rounded bg-gray-50 text-sm"></div>
-      </div>
-
-      <!-- Recent User Transactions -->
-      <div>
-        <h4 class="font-bold text-gray-800 mb-2">Recent User Transactions</h4>
-        <div id="activityTransactionsList" class="space-y-2 max-h-48 overflow-y-auto border p-3 rounded bg-gray-50 text-sm"></div>
       </div>
     </div>
   </div>
@@ -176,11 +128,11 @@
         </div>
         <div class="mb-6">
           <label class="block text-sm font-medium mb-1">Reason / Note</label>
-          <input type="text" id="modalNote" placeholder="e.g. Manual top-up / refund" class="w-full border p-2 rounded">
+          <input type="text" id="modalNote" placeholder="e.g. Manual adjustment" class="w-full border p-2 rounded">
         </div>
         <div class="flex justify-end gap-3">
           <button type="button" onclick="closeModal()" class="px-4 py-2 border rounded text-gray-600">Cancel</button>
-          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Submit Adjustment</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold">Submit</button>
         </div>
       </form>
     </div>
@@ -194,20 +146,24 @@
       const email = document.getElementById('adminEmail').value;
       const password = document.getElementById('adminPassword').value;
 
-      const res = await fetch(`${API_BASE}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch(`${API_BASE}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
 
-      if (data.success) {
-        localStorage.setItem('adminToken', data.token);
-        loadDashboard();
-      } else {
-        const err = document.getElementById('loginError');
-        err.textContent = data.message;
-        err.classList.remove('hidden');
+        if (data.success) {
+          localStorage.setItem('adminToken', data.token);
+          loadDashboard();
+        } else {
+          const err = document.getElementById('loginError');
+          err.textContent = data.message || 'Login failed';
+          err.classList.remove('hidden');
+        }
+      } catch (err) {
+        alert('Error connecting to backend server.');
       }
     }
 
@@ -215,150 +171,87 @@
       const token = localStorage.getItem('adminToken');
       if (!token) return;
 
-      const res = await fetch(`${API_BASE}/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch(`${API_BASE}/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
 
-      if (data.success) {
-        document.getElementById('loginSection').classList.add('hidden');
-        document.getElementById('dashboardSection').classList.remove('hidden');
+        if (data.success) {
+          document.getElementById('loginSection').classList.add('hidden');
+          document.getElementById('dashboardSection').classList.remove('hidden');
 
-        document.getElementById('totalUsersCount').textContent = data.stats.totalUsers;
-        document.getElementById('totalNGN').textContent = `₦${(data.stats.totalBalances.NGN || 0).toLocaleString()}`;
-        document.getElementById('totalUSD').textContent = `$${(data.stats.totalBalances.USD || 0).toFixed(2)}`;
-        document.getElementById('totalOther').textContent = `£${(data.stats.totalBalances.GBP || 0).toFixed(2)} / €${(data.stats.totalBalances.EUR || 0).toFixed(2)}`;
+          document.getElementById('totalUsersCount').textContent = data.stats.totalUsers || 0;
+          document.getElementById('totalNGN').textContent = `₦${(data.stats.totalBalances.NGN || 0).toLocaleString()}`;
+          document.getElementById('totalUSD').textContent = `$${(data.stats.totalBalances.USD || 0).toFixed(2)}`;
+          document.getElementById('totalOther').textContent = `£${(data.stats.totalBalances.GBP || 0).toFixed(2)} / €${(data.stats.totalBalances.EUR || 0).toFixed(2)}`;
 
-        // Render KYC funnel
-        document.getElementById('kycVerifiedCount').textContent = data.stats.kycMetrics.verified;
-        document.getElementById('kycPendingCount').textContent = data.stats.kycMetrics.pending;
-        document.getElementById('kycUnverifiedCount').textContent = data.stats.kycMetrics.unverified;
+          const tbody = document.getElementById('userTableBody');
+          tbody.innerHTML = (data.stats.userList || []).map(u => {
+            const b = u.balances || u.walletBalance || {};
+            const isSuspended = u.status === 'Suspended';
+            const name = (u.fullName || u.name || 'User').replace(/'/g, "");
 
-        // Render Users
-        const tbody = document.getElementById('userTableBody');
-        tbody.innerHTML = data.stats.userList.map(u => {
-          const b = u.balances || u.walletBalance || {};
-          const isSuspended = u.status === 'Suspended';
-          const kyc = (u.kycStatus || 'Unverified').toLowerCase();
-          
-          let kycBadge = '<span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">Unverified</span>';
-          if (kyc === 'verified' || kyc === 'approved') kycBadge = '<span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800 font-medium">Verified</span>';
-          else if (kyc === 'pending' || kyc === 'submitted' || kyc === 'in_review') kycBadge = '<span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800 font-medium">In Review</span>';
+            return `
+              <tr class="border-b">
+                <td class="p-3">
+                  <p class="font-medium text-gray-900">${name}</p>
+                  <p class="text-xs text-gray-500">${u.email}</p>
+                </td>
+                <td class="p-3 font-semibold text-green-600">₦${(b.NGN || 0).toLocaleString()}</td>
+                <td class="p-3 font-semibold text-blue-600">$${(b.USD || 0).toFixed(2)}</td>
+                <td class="p-3">
+                  <span class="px-2 py-1 text-xs rounded-full ${isSuspended ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+                    ${u.status || 'Active'}
+                  </span>
+                </td>
+                <td class="p-3 text-center space-x-2">
+                  <button onclick="openAdjustModal('${u._id}', '${name}')" class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1 rounded text-xs font-semibold hover:bg-blue-100">
+                    Adjust Wallet
+                  </button>
+                  <button onclick="toggleUserStatus('${u._id}', '${isSuspended ? 'Active' : 'Suspended'}')" class="${isSuspended ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'} border px-3 py-1 rounded text-xs font-semibold">
+                    ${isSuspended ? 'Activate' : 'Suspend'}
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
 
-          return `
-            <tr class="border-b">
-              <td class="p-3">
-                <p class="font-medium text-gray-900">${u.fullName || u.name || 'N/A'}</p>
-                <p class="text-xs text-gray-500">${u.email}</p>
-              </td>
-              <td class="p-3">${kycBadge}</td>
-              <td class="p-3 font-semibold text-green-600">₦${(b.NGN || 0).toLocaleString()}</td>
-              <td class="p-3 font-semibold text-blue-600">$${(b.USD || 0).toFixed(2)}</td>
-              <td class="p-3">
-                <span class="px-2 py-1 text-xs rounded-full ${isSuspended ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
-                  ${u.status || 'Active'}
-                </span>
-              </td>
-              <td class="p-3 text-center space-x-1">
-                <button onclick="viewUserActivity('${u._id}')" class="bg-gray-100 text-gray-700 border px-2 py-1 rounded text-xs font-semibold hover:bg-gray-200">
-                  Activity
-                </button>
-                <button onclick="openAdjustModal('${u._id}', '${u.fullName || u.name}')" class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded text-xs font-semibold hover:bg-blue-100">
-                  Adjust
-                </button>
-                <button onclick="toggleUserStatus('${u._id}', '${isSuspended ? 'Active' : 'Suspended'}')" class="${isSuspended ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'} border px-2 py-1 rounded text-xs font-semibold">
-                  ${isSuspended ? 'Activate' : 'Suspend'}
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-
-        loadWithdrawals();
-      } else {
-        logout();
-      }
-    }
-
-    async function viewUserActivity(userId) {
-      const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${API_BASE}/users/${userId}/activity`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        document.getElementById('activityUserName').textContent = data.user.fullName || data.user.name;
-        document.getElementById('activityUserEmail').textContent = data.user.email;
-
-        // Render Links
-        const linksDiv = document.getElementById('activityLinksList');
-        if (data.activity.paymentLinks.length === 0) {
-          linksDiv.innerHTML = '<p class="text-gray-500 italic">No payment links created yet.</p>';
+          loadWithdrawals();
         } else {
-          linksDiv.innerHTML = data.activity.paymentLinks.map(l => `
-            <div class="flex justify-between items-center border-b pb-1">
-              <div>
-                <p class="font-medium text-gray-800">${l.title || 'Payment Link'}</p>
-                <p class="text-xs text-blue-600">/pay/${l.slug}</p>
-              </div>
-              <p class="font-bold text-gray-700">${l.currency} ${l.amount}</p>
-            </div>
-          `).join('');
+          logout();
         }
-
-        // Render Transactions
-        const txDiv = document.getElementById('activityTransactionsList');
-        if (data.activity.transactions.length === 0) {
-          txDiv.innerHTML = '<p class="text-gray-500 italic">No recorded transactions for this user.</p>';
-        } else {
-          txDiv.innerHTML = data.activity.transactions.map(t => `
-            <div class="flex justify-between items-center border-b pb-1">
-              <div>
-                <p class="font-medium text-gray-800">${t.type.toUpperCase()} - ${t.description || 'Transaction'}</p>
-                <p class="text-xs text-gray-400">${new Date(t.createdAt).toLocaleString()}</p>
-              </div>
-              <div class="text-right">
-                <p class="font-bold ${t.type.includes('credit') || t.type === 'payment' ? 'text-green-600' : 'text-red-600'}">${t.currency} ${t.amount}</p>
-                <span class="text-xs uppercase px-1 rounded bg-gray-200">${t.status}</span>
-              </div>
-            </div>
-          `).join('');
-        }
-
-        document.getElementById('activityModal').classList.remove('hidden');
+      } catch (err) {
+        console.error("Dashboard error:", err);
       }
-    }
-
-    function closeActivityModal() {
-      document.getElementById('activityModal').classList.add('hidden');
     }
 
     async function loadWithdrawals() {
       const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${API_BASE}/withdrawals`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch(`${API_BASE}/withdrawals`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
 
-      if (data.success && data.withdrawals.length > 0) {
-        document.getElementById('withdrawalBadge').textContent = data.withdrawals.length;
-        document.getElementById('withdrawalBadge').classList.remove('hidden');
-
-        document.getElementById('withdrawalsTableBody').innerHTML = data.withdrawals.map(w => `
-          <tr class="border-b">
-            <td class="p-3 font-medium">${w.user ? w.user.fullName : 'N/A'} (${w.user ? w.user.email : ''})</td>
-            <td class="p-3 font-bold text-gray-900">${w.currency} ${w.amount.toLocaleString()}</td>
-            <td class="p-3 text-sm text-gray-600">${w.description || 'N/A'}</td>
-            <td class="p-3 text-xs text-gray-500">${new Date(w.createdAt).toLocaleDateString()}</td>
-            <td class="p-3 text-center space-x-2">
-              <button onclick="processWithdrawal('${w._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-green-700">Approve</button>
-              <button onclick="processWithdrawal('${w._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-red-700">Reject & Refund</button>
-            </td>
-          </tr>
-        `).join('');
-      } else {
-        document.getElementById('withdrawalsTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No pending withdrawals found.</td></tr>';
+        if (data.success && data.withdrawals && data.withdrawals.length > 0) {
+          document.getElementById('withdrawalsTableBody').innerHTML = data.withdrawals.map(w => `
+            <tr class="border-b">
+              <td class="p-3 font-medium">${w.user ? (w.user.fullName || w.user.email) : 'User'}</td>
+              <td class="p-3 font-bold text-gray-900">${w.currency} ${w.amount.toLocaleString()}</td>
+              <td class="p-3 text-sm text-gray-600">${w.description || 'N/A'}</td>
+              <td class="p-3 text-xs text-gray-500">${new Date(w.createdAt).toLocaleDateString()}</td>
+              <td class="p-3 text-center space-x-2">
+                <button onclick="processWithdrawal('${w._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-green-700">Approve</button>
+                <button onclick="processWithdrawal('${w._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-red-700">Reject & Refund</button>
+              </td>
+            </tr>
+          `).join('');
+        } else {
+          document.getElementById('withdrawalsTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No pending withdrawals found.</td></tr>';
+        }
+      } catch (err) {
+        console.error("Withdrawals error:", err);
       }
     }
 
@@ -383,33 +276,41 @@
         note: document.getElementById('modalNote').value
       };
 
-      const res = await fetch(`${API_BASE}/users/adjust-balance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body)
-      });
+      try {
+        const res = await fetch(`${API_BASE}/users/adjust-balance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(body)
+        });
 
-      const data = await res.json();
-      alert(data.message);
-      if (data.success) {
-        closeModal();
-        loadDashboard();
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) {
+          closeModal();
+          loadDashboard();
+        }
+      } catch (err) {
+        alert('Failed to execute adjustment.');
       }
     }
 
     async function toggleUserStatus(userId, status) {
-      if (!confirm(`Are you sure you want to change user status to ${status}?`)) return;
+      if (!confirm(`Are you sure you want to set user status to ${status}?`)) return;
       const token = localStorage.getItem('adminToken');
 
-      const res = await fetch(`${API_BASE}/users/toggle-status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ userId, status })
-      });
+      try {
+        const res = await fetch(`${API_BASE}/users/toggle-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ userId, status })
+        });
 
-      const data = await res.json();
-      alert(data.message);
-      if (data.success) loadDashboard();
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) loadDashboard();
+      } catch (err) {
+        alert('Failed to change status.');
+      }
     }
 
     async function processWithdrawal(transactionId, action) {
@@ -417,15 +318,19 @@
       if (action === 'reject' && reason === null) return;
 
       const token = localStorage.getItem('adminToken');
-      const res = await fetch(`${API_BASE}/withdrawals/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ transactionId, action, reason })
-      });
+      try {
+        const res = await fetch(`${API_BASE}/withdrawals/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ transactionId, action, reason })
+        });
 
-      const data = await res.json();
-      alert(data.message);
-      if (data.success) loadDashboard();
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) loadDashboard();
+      } catch (err) {
+        alert('Action failed.');
+      }
     }
 
     function logout() {
