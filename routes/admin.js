@@ -62,7 +62,6 @@ router.get('/stats', verifyAdmin, async (req, res) => {
       totalBalances.GBP += b.GBP || 0;
       totalBalances.EUR += b.EUR || 0;
 
-      // Track KYC Verification states
       const kyc = (u.kycStatus || 'Unverified').toLowerCase();
       if (kyc === 'verified' || kyc === 'approved') kycMetrics.verified++;
       else if (kyc === 'pending' || kyc === 'submitted' || kyc === 'in_review') kycMetrics.pending++;
@@ -163,7 +162,19 @@ router.post('/users/toggle-status', verifyAdmin, async (req, res) => {
   }
 });
 
-// 6. Get Pending Withdrawals
+// 6. Delete All Accounts
+router.delete('/users/delete-all', verifyAdmin, async (req, res) => {
+  try {
+    await User.deleteMany({});
+    await Transaction.deleteMany({});
+    await PaymentLink.deleteMany({});
+    res.json({ success: true, message: 'All user accounts and related records deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 7. Get Pending Withdrawals
 router.get('/withdrawals', verifyAdmin, async (req, res) => {
   try {
     const withdrawals = await Transaction.find({ type: 'withdrawal', status: 'pending' }).populate('user', 'fullName email').lean();
@@ -173,7 +184,7 @@ router.get('/withdrawals', verifyAdmin, async (req, res) => {
   }
 });
 
-// 7. Process Withdrawal
+// 8. Process Withdrawal
 router.post('/withdrawals/action', verifyAdmin, async (req, res) => {
   const { transactionId, action, reason } = req.body;
 

@@ -35,7 +35,10 @@
           <h1 class="text-3xl font-bold text-gray-900">AkonniiPay Admin Dashboard</h1>
           <p class="text-sm text-gray-500">Platform Management, KYC, & User Activity</p>
         </div>
-        <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 font-semibold">Logout</button>
+        <div class="flex gap-3">
+          <button id="deleteAllBtn" class="bg-red-700 text-white px-4 py-2 rounded text-sm hover:bg-red-800 font-semibold">Delete All Accounts</button>
+          <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 font-semibold">Logout</button>
+        </div>
       </div>
 
       <!-- Overview Stats Grid -->
@@ -98,9 +101,20 @@
         </div>
       </div>
 
-      <!-- Users List -->
+      <!-- Users List with Filter Tabs -->
       <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Registered Users & Wallet Actions</h2>
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+          <h2 class="text-xl font-bold text-gray-800">Registered Users & Categorization</h2>
+          <!-- Filter Tabs -->
+          <div class="flex flex-wrap gap-2">
+            <button onclick="filterUsers('all')" id="tab-all" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white">All Users</button>
+            <button onclick="filterUsers('verified')" id="tab-verified" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Verified</button>
+            <button onclick="filterUsers('unverified')" id="tab-unverified" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Unverified</button>
+            <button onclick="filterUsers('active')" id="tab-active" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Active</button>
+            <button onclick="filterUsers('suspended')" id="tab-suspended" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Suspended</button>
+          </div>
+        </div>
+
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
@@ -183,16 +197,21 @@
 
   <script>
     const API_BASE = '/api/admin';
+    let globalUsersList = [];
+    let currentFilter = 'all';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // Immediate execution on load to prevent DOMContentLoaded timing bugs
+    window.onload = function() {
       const loginForm = document.getElementById('adminLoginForm');
       const logoutBtn = document.getElementById('logoutBtn');
+      const deleteAllBtn = document.getElementById('deleteAllBtn');
       const adjustForm = document.getElementById('adjustForm');
       const closeModalBtn = document.getElementById('closeModalBtn');
       const closeActivityBtn = document.getElementById('closeActivityBtn');
 
       if (loginForm) loginForm.addEventListener('submit', handleLogin);
       if (logoutBtn) logoutBtn.addEventListener('click', logout);
+      if (deleteAllBtn) deleteAllBtn.addEventListener('click', deleteAllAccounts);
       if (adjustForm) adjustForm.addEventListener('submit', submitAdjustment);
       if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
       if (closeActivityBtn) closeActivityBtn.addEventListener('click', closeActivityModal);
@@ -200,7 +219,7 @@
       if (localStorage.getItem('adminToken')) {
         loadDashboard();
       }
-    });
+    };
 
     async function handleLogin(e) {
       e.preventDefault();
@@ -251,7 +270,8 @@
           document.getElementById('kycPendingCount').textContent = data.stats.kycMetrics.pending || 0;
           document.getElementById('kycUnverifiedCount').textContent = data.stats.kycMetrics.unverified || 0;
 
-          renderUsers(data.stats.userList || []);
+          globalUsersList = data.stats.userList || [];
+          renderUsers(globalUsersList);
           loadWithdrawals();
         } else {
           logout();
@@ -261,9 +281,49 @@
       }
     }
 
+    function filterUsers(filterType) {
+      currentFilter = filterType;
+      
+      // Update tab button styles
+      ['all', 'verified', 'unverified', 'active', 'suspended'].forEach(tab => {
+        const btn = document.getElementById(`tab-${tab}`);
+        if (btn) {
+          if (tab === filterType) {
+            btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white';
+          } else {
+            btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200';
+          }
+        }
+      });
+
+      let filtered = globalUsersList;
+      if (filterType === 'verified') {
+        filtered = globalUsersList.filter(u => {
+          const kyc = (u.kycStatus || '').toLowerCase();
+          return kyc === 'verified' || kyc === 'approved';
+        });
+      } else if (filterType === 'unverified') {
+        filtered = globalUsersList.filter(u => {
+          const kyc = (u.kycStatus || 'unverified').toLowerCase();
+          return kyc !== 'verified' && kyc !== 'approved';
+        });
+      } else if (filterType === 'active') {
+        filtered = globalUsersList.filter(u => (u.status || 'Active') === 'Active');
+      } else if (filterType === 'suspended') {
+        filtered = globalUsersList.filter(u => u.status === 'Suspended');
+      }
+
+      renderUsers(filtered);
+    }
+
     function renderUsers(users) {
       const tbody = document.getElementById('userTableBody');
       tbody.innerHTML = '';
+
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">No users found in this category.</td></tr>';
+        return;
+      }
 
       users.forEach(u => {
         const b = u.balances || u.walletBalance || {};
@@ -305,7 +365,6 @@
 
         tr.querySelector('.userNameCell').textContent = name;
 
-        // Attach safe event listeners directly
         tr.querySelector('.activity-btn').addEventListener('click', () => viewUserActivity(u._id));
         tr.querySelector('.adjust-btn').addEventListener('click', () => openAdjustModal(u._id, name));
         tr.querySelector('.suspend-btn').addEventListener('click', () => toggleUserStatus(u._id, isSuspended ? 'Active' : 'Suspended'));
@@ -485,6 +544,23 @@
         if (data.success) loadDashboard();
       } catch (err) {
         alert('Action failed.');
+      }
+    }
+
+    async function deleteAllAccounts() {
+      if (!confirm('DANGER: Are you sure you want to delete ALL user accounts and their transaction histories? This action cannot be undone!')) return;
+      const token = localStorage.getItem('adminToken');
+
+      try {
+        const res = await fetch(`${API_BASE}/users/delete-all`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) loadDashboard();
+      } catch (err) {
+        alert('Failed to delete accounts.');
       }
     }
 
