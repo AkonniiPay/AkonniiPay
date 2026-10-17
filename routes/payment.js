@@ -328,9 +328,81 @@ router.post('/verify-and-credit', async (req, res) => {
   }
 });
 
-// GET /api/payment/sync-payment
-router.get('/sync-payment', authMiddleware, async (req, res) => {
+// POST /api/payment/sync-payment (Requires valid reference code & prevents double crediting)
+router.post('/sync-payment', authMiddleware, async (req, res) => {
   try {
+    const { reference } = req.body;
+
+    if (!reference || !reference.trim()) {
+      return res.status(400).json({ success: false, message: "Please provide a valid transaction reference code." });
+    }
+
+    const ref = reference.trim();
+    const userId = req.user.id || req.user._id;
+    const merchant = await User.findById(userId);
+
+    if (!merchant) {
+      return res.status(404).json({ success: false, message: "Merchant not found." });
+    }
+
+    if (!merchant.syncedReferences) {
+      merchant.syncedReferences = [];
+    }
+
+    if (merchant.syncedReferences.includes(ref)) {
+      return res.status(400).json({ success: false, message: "This transaction reference code has already been processed and credited." });
+    }
+
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) {
+      return res.status(500).json({ success: false, message: "Paystack secret key is missing." });
+    }
+
+    const verifyRes = await axios.get(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
+      headers: { Authorization: `Bearer ${secretKey}` }
+    });
+
+    if (verifyRes.data && verifyRes.data.status && verifyRes.data.data.status === 'success') {
+      const txData = verifyRes.data.data;
+      const linkId = txData.metadata?.linkId;
+
+      let creditAmount = txData.amount ? txData.amount / 100 : 200;
+      let currency = (txData.currency || 'NGN').toUpperCase();
+
+      if (linkId) {
+        const link = await PaymentLink.findById(linkId);
+        if (link) {
+          creditAmount = Number(link.amount);
+          currency = (link.currency || 'NGN').toUpperCase();
+        }
+      }
+
+      if (!merchant.balances) {
+        merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
+      }
+
+      merchant.balances[currency] = (merchant.balances[currency] || 0) + creditAmount;
+      merchant.syncedReferences.push(ref);
+      await merchant.save();
+
+      return res.json({
+        success: true,
+        message: `Transaction verified! ${currency} ${creditAmount} successfully credited to your wallet.`,
+        balances: merchant.balances
+      });
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid transaction reference or payment not completed." });
+    }
+  } catch (err) {
+    console.error("Sync payment error:", err.response?.data || err.message);
+    return res.status(400).json({ success: false, message: "Invalid transaction reference or verification failed." });
+  }
+});
+
+// POST /api/payment/reset-balance (Emergency dashboard tool to instantly reset NGN wallet balance)
+router.post('/reset-balance', authMiddleware, async (req, res) => {
+  try {
+    const { amount } = req.body;
     const userId = req.user.id || req.user._id;
     const merchant = await User.findById(userId);
 
@@ -342,18 +414,17 @@ router.get('/sync-payment', authMiddleware, async (req, res) => {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     }
 
-    const recoveryAmount = 200;
-    merchant.balances.NGN = (merchant.balances.NGN || 0) + recoveryAmount;
+    merchant.balances.NGN = Number(amount) || 0;
     await merchant.save();
 
     return res.json({
       success: true,
-      amount: recoveryAmount,
-      message: "Payment successfully synchronized and wallet credited."
+      message: `NGN balance successfully reset to ₦${merchant.balances.NGN.toLocaleString()}`,
+      balances: merchant.balances
     });
   } catch (err) {
-    console.error("Sync payment error:", err);
-    return res.status(500).json({ success: false, message: "Error syncing payments." });
+    console.error("Reset balance error:", err);
+    return res.status(500).json({ success: false, message: "Server error resetting balance." });
   }
 });
 

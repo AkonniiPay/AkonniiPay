@@ -41,6 +41,7 @@
         <h2 class="fw-bold mb-0">Welcome Back, Merchant</h2>
         <div class="d-flex align-items-center gap-2">
           <button id="syncPaymentBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-repeat me-1"></i> Sync Payment</button>
+          <button id="resetBalanceBtn" class="btn btn-outline-warning btn-sm"><i class="bi bi-sliders me-1"></i> Reset Balance</button>
           <button id="signOutBtn" class="btn btn-outline-danger btn-sm">Sign Out</button>
         </div>
       </div>
@@ -527,25 +528,78 @@
       }
     });
 
-    // Sync Payment Button Handler
+    // Sync Payment Button Handler (Prompt for Reference Code)
     document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
       const token = localStorage.getItem('token');
       if (!token) return alert('Please sign in first.');
 
+      const reference = prompt("Enter your Transaction Reference Code (e.g., AKP_TX_...):");
+      if (!reference || !reference.trim()) return;
+
+      const btn = document.getElementById('syncPaymentBtn');
+      btn.disabled = true;
+      btn.innerText = 'Verifying...';
+
       try {
         const res = await fetch('/api/payment/sync-payment', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ reference: reference.trim() })
         });
+
         const data = await res.json();
         if (res.ok && data.success) {
-          alert(data.message || "Payment successfully synchronized and wallet credited.");
+          alert(data.message || "Payment verified and wallet credited.");
           window.location.reload();
         } else {
-          alert(data.message || "Failed to sync payment.");
+          alert(data.message || "Failed to verify payment reference.");
+          btn.disabled = false;
+          btn.innerText = 'Sync Payment';
         }
       } catch (err) {
         console.error("Sync error:", err);
-        alert("Network error syncing payment.");
+        alert("Network error verifying payment.");
+        btn.disabled = false;
+        btn.innerText = 'Sync Payment';
+      }
+    });
+
+    // Reset Balance Button Handler
+    document.getElementById('resetBalanceBtn')?.addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return alert('Please sign in first.');
+
+      const inputAmount = prompt("Enter your correct NGN balance amount (e.g., 200):");
+      if (inputAmount === null || inputAmount.trim() === "") return;
+
+      const newAmount = parseFloat(inputAmount);
+      if (isNaN(newAmount)) {
+        return alert("Please enter a valid number.");
+      }
+
+      try {
+        const res = await fetch('/api/payment/reset-balance', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ amount: newAmount })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message);
+          window.location.reload();
+        } else {
+          alert(data.message || "Failed to reset balance.");
+        }
+      } catch (err) {
+        console.error("Reset error:", err);
+        alert("Network error resetting balance.");
       }
     });
 
