@@ -249,16 +249,19 @@ router.post('/webhook', async (req, res) => {
     const event = req.body;
     let linkId = null;
     let currency = 'NGN';
+    let reference = null;
 
     if (event && event.event === 'charge.success') {
       const data = event.data;
       linkId = data.metadata?.linkId;
       currency = data.currency || 'NGN';
+      reference = data.reference;
     } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
       const data = event.data;
       if (data && data.status === 'successful') {
         linkId = data.meta?.linkId;
         currency = data.currency || 'USD';
+        reference = data.tx_ref;
       }
     }
 
@@ -274,11 +277,26 @@ router.post('/webhook', async (req, res) => {
           if (!merchant.balances) {
             merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
           }
+          if (!merchant.syncedReferences) {
+            merchant.syncedReferences = [];
+          }
+          if (!merchant.transactionHistory) {
+            merchant.transactionHistory = [];
+          }
 
-          merchant.balances[currency] = (merchant.balances[currency] || 0) + merchantCreditAmount;
-          await merchant.save();
-
-          console.log(`[WEBHOOK] Credited base amount ${currency} ${merchantCreditAmount} to merchant ${merchant._id}`);
+          if (reference && !merchant.syncedReferences.includes(reference)) {
+            merchant.balances[currency] = (merchant.balances[currency] || 0) + merchantCreditAmount;
+            merchant.syncedReferences.push(reference);
+            merchant.transactionHistory.push({
+              reference: reference,
+              amount: merchantCreditAmount,
+              currency: currency,
+              status: 'credited',
+              date: new Date()
+            });
+            await merchant.save();
+            console.log(`[WEBHOOK] Credited base amount ${currency} ${merchantCreditAmount} to merchant ${merchant._id}`);
+          }
         }
       }
     }
@@ -293,7 +311,7 @@ router.post('/webhook', async (req, res) => {
 // POST /api/payment/verify-and-credit (Auto-credits merchant balance on successful checkout return)
 router.post('/verify-and-credit', async (req, res) => {
   try {
-    const { currency, linkId } = req.body;
+    const { currency, linkId, reference } = req.body;
 
     const link = await PaymentLink.findById(linkId);
     if (!link) {
@@ -313,8 +331,28 @@ router.post('/verify-and-credit', async (req, res) => {
     if (!merchant.balances) {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     }
+    if (!merchant.syncedReferences) {
+      merchant.syncedReferences = [];
+    }
+    if (!merchant.transactionHistory) {
+      merchant.transactionHistory = [];
+    }
+
+    if (reference && merchant.syncedReferences.includes(reference)) {
+      return res.json({ success: true, message: "Already added to balance", balances: merchant.balances });
+    }
 
     merchant.balances[curr] = (merchant.balances[curr] || 0) + creditAmount;
+    if (reference) {
+      merchant.syncedReferences.push(reference);
+      merchant.transactionHistory.push({
+        reference: reference,
+        amount: creditAmount,
+        currency: curr,
+        status: 'credited',
+        date: new Date()
+      });
+    }
     await merchant.save();
 
     return res.json({
@@ -328,7 +366,7 @@ router.post('/verify-and-credit', async (req, res) => {
   }
 });
 
-// POST /api/payment/sync-payment (Requires valid reference code & prevents double crediting)
+// POST /api/payment/sync-payment (Strict reference validation & duplicate prevention)
 router.post('/sync-payment', authMiddleware, async (req, res) => {
   try {
     const { reference } = req.body;
@@ -348,9 +386,20 @@ router.post('/sync-payment', authMiddleware, async (req, res) => {
     if (!merchant.syncedReferences) {
       merchant.syncedReferences = [];
     }
+    if (!merchant.transactionHistory) {
+      merchant.transactionHistory = [];
+    }
 
-    if (merchant.syncedReferences.includes(ref)) {
-      return res.status(400).json({ success: false, message: "This transaction reference code has already been processed and credited." });
+    // Check if reference has already been processed and credited
+    const isAlreadyPaid = merchant.syncedReferences.includes(ref) || 
+                          merchant.transactionHistory.some(tx => tx.reference === ref && tx.status === 'credited');
+
+    if (isAlreadyPaid) {
+      return res.status(400).json({ 
+        success: false, 
+        alreadyPaid: true,
+        message: "Already added to balance" 
+      });
     }
 
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
@@ -358,15 +407,23 @@ router.post('/sync-payment', authMiddleware, async (req, res) => {
       return res.status(500).json({ success: false, message: "Paystack secret key is missing." });
     }
 
-    const verifyRes = await axios.get(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
-      headers: { Authorization: `Bearer ${secretKey}` }
-    });
+    let verifyRes;
+    try {
+      verifyRes = await axios.get(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
+        headers: { Authorization: `Bearer ${secretKey}` }
+      });
+    } catch (apiErr) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Error: Transaction reference code not found in records or invalid." 
+      });
+    }
 
     if (verifyRes.data && verifyRes.data.status && verifyRes.data.data.status === 'success') {
       const txData = verifyRes.data.data;
       const linkId = txData.metadata?.linkId;
 
-      let creditAmount = txData.amount ? txData.amount / 100 : 200;
+      let creditAmount = txData.amount ? txData.amount / 100 : 0;
       let currency = (txData.currency || 'NGN').toUpperCase();
 
       if (linkId) {
@@ -377,54 +434,40 @@ router.post('/sync-payment', authMiddleware, async (req, res) => {
         }
       }
 
+      if (creditAmount <= 0) {
+        return res.status(400).json({ success: false, message: "Invalid transaction amount recorded." });
+      }
+
       if (!merchant.balances) {
         merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
       }
 
       merchant.balances[currency] = (merchant.balances[currency] || 0) + creditAmount;
       merchant.syncedReferences.push(ref);
+      merchant.transactionHistory.push({
+        reference: ref,
+        amount: creditAmount,
+        currency: currency,
+        status: 'credited',
+        date: new Date()
+      });
+
       await merchant.save();
 
       return res.json({
         success: true,
-        message: `Transaction verified! ${currency} ${creditAmount} successfully credited to your wallet.`,
+        message: `Transaction verified! ${currency} ${creditAmount} successfully added to your balance.`,
         balances: merchant.balances
       });
     } else {
-      return res.status(400).json({ success: false, message: "Invalid transaction reference or payment not completed." });
+      return res.status(400).json({ 
+        success: false, 
+        message: "Error: Payment was not successful or reference is unverified." 
+      });
     }
   } catch (err) {
     console.error("Sync payment error:", err.response?.data || err.message);
     return res.status(400).json({ success: false, message: "Invalid transaction reference or verification failed." });
-  }
-});
-
-// POST /api/payment/reset-balance (Emergency dashboard tool to instantly reset NGN wallet balance)
-router.post('/reset-balance', authMiddleware, async (req, res) => {
-  try {
-    const { amount } = req.body;
-    const userId = req.user.id || req.user._id;
-    const merchant = await User.findById(userId);
-
-    if (!merchant) {
-      return res.status(404).json({ success: false, message: "Merchant not found." });
-    }
-
-    if (!merchant.balances) {
-      merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
-    }
-
-    merchant.balances.NGN = Number(amount) || 0;
-    await merchant.save();
-
-    return res.json({
-      success: true,
-      message: `NGN balance successfully reset to ₦${merchant.balances.NGN.toLocaleString()}`,
-      balances: merchant.balances
-    });
-  } catch (err) {
-    console.error("Reset balance error:", err);
-    return res.status(500).json({ success: false, message: "Server error resetting balance." });
   }
 });
 
