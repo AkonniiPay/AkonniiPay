@@ -261,7 +261,6 @@
           const accounts = userData.virtualAccounts || {};
 
           if (!isVerified) {
-            // Show red Verify Now Prompt for unverified accounts
             rowContainer.innerHTML = `
               <div class="col-12">
                 <div class="alert alert-danger p-4 rounded-3 d-flex justify-content-between align-items-center shadow-sm">
@@ -457,7 +456,16 @@
       const box = document.getElementById('feeBreakdownBox');
 
       if (amount > 0) {
-        let fee = curr === 'NGN' ? Math.max(amount * 0.015, 50) : Math.max(amount * 0.02, 1);
+        // FAIR WITHDRAWAL FEE UPDATE: ₦10 for up to ₦5k, ₦25 for up to ₦50k, ₦50 max
+        let fee = 0;
+        if (curr === 'NGN') {
+          if (amount <= 5000) fee = 10;
+          else if (amount <= 50000) fee = 25;
+          else fee = 50;
+        } else {
+          fee = Math.max(amount * 0.02, 1);
+        }
+
         let netAmount = Math.max(amount - fee, 0);
 
         let finalPayoutText = '';

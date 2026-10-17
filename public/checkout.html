@@ -116,7 +116,8 @@
         let fee = 0;
 
         if (link.feeBearer === 'payer' || link.chargeBearer === 'payer') {
-          fee = link.currency === 'NGN' ? Math.max(baseAmount * 0.015, 100) : baseAmount * 0.02;
+          // FAIR FEE UPDATE: 1.5% + ₦10 instead of forced ₦100 minimum
+          fee = link.currency === 'NGN' ? (baseAmount * 0.015) + 10 : baseAmount * 0.02;
           finalAmount = baseAmount + fee;
 
           document.getElementById('baseAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;
