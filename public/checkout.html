@@ -73,6 +73,19 @@
     document.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('status') === 'success') {
+        const linkId = urlParams.get('linkId');
+        if (linkId) {
+          try {
+            await fetch('/api/payment/verify-and-credit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ linkId })
+            });
+          } catch (e) {
+            console.error("Auto credit error:", e);
+          }
+        }
+
         document.getElementById('loadingState').classList.add('d-none');
         document.getElementById('successState').classList.remove('d-none');
         return;
@@ -116,8 +129,8 @@
         let fee = 0;
 
         if (link.feeBearer === 'payer' || link.chargeBearer === 'payer') {
-          // FAIR FEE UPDATE: 1.5% + ₦10 instead of forced ₦100 minimum
-          fee = link.currency === 'NGN' ? (baseAmount * 0.015) + 10 : baseAmount * 0.02;
+          // FAIR FEE UPDATE: 1.5% + ₦10 (capped at ₦2000)
+          fee = link.currency === 'NGN' ? Math.min((baseAmount * 0.015) + 10, 2000) : baseAmount * 0.029;
           finalAmount = baseAmount + fee;
 
           document.getElementById('baseAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;

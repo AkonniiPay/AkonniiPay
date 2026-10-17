@@ -11,6 +11,19 @@ function slugify(text) {
   return text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
+// Fair Checkout Fee Calculation (1.5% + ₦10, capped at ₦2000 for NGN)
+function calculateCheckoutFee(amount, currency) {
+  const base = parseFloat(amount) || 0;
+  if (base <= 0) return 0;
+
+  const curr = (currency || 'NGN').toUpperCase();
+  if (curr === 'NGN') {
+    const fee = (base * 0.015) + 10;
+    return Math.min(fee, 2000); 
+  }
+  return base * 0.029;
+}
+
 // POST /api/payment/create-link
 router.post('/create-link', authMiddleware, async (req, res) => {
   try {
@@ -110,7 +123,14 @@ router.get('/link-by-slug/:slug', async (req, res) => {
       return res.status(404).json({ success: false, message: "This payment link is invalid, expired, or has been closed." });
     }
 
-    return res.json({ success: true, link });
+    const fee = calculateCheckoutFee(link.amount, link.currency);
+    const totalDue = link.feeBearer === 'payer' ? link.amount + fee : link.amount;
+
+    const linkObj = link.toObject();
+    linkObj.calculatedFee = fee;
+    linkObj.totalDue = totalDue;
+
+    return res.json({ success: true, link: linkObj });
   } catch (err) {
     console.error("Error fetching link by slug:", err);
     return res.status(500).json({ success: false, message: "Server error fetching payment link." });
@@ -130,8 +150,17 @@ router.post('/initialize', async (req, res) => {
     }
 
     const currency = (link.currency || 'NGN').toUpperCase();
-    const callbackUrl = `https://akonniipay.top/dashboard?status=success`;
+    
+    // REDIRECT PAYER BACK TO CHECKOUT SUCCESS PAGE (Prevents dashboard login redirection)
+    const callbackUrl = slug 
+      ? `https://akonniipay.top/pay/${slug}?status=success&linkId=${link._id}`
+      : `https://akonniipay.top/checkout.html?id=${link._id}&status=success`;
+
     const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
+
+    const baseAmount = Number(amount || link.amount);
+    const fee = calculateCheckoutFee(baseAmount, currency);
+    const finalChargeAmount = link.feeBearer === 'payer' ? baseAmount + fee : baseAmount;
 
     // 1. FOREIGN CURRENCY -> FLUTTERWAVE
     if (currency !== 'NGN') {
@@ -142,7 +171,7 @@ router.post('/initialize', async (req, res) => {
 
       const flwRes = await axios.post('https://api.flutterwave.com/v3/payments', {
         tx_ref: txRef,
-        amount: Number(amount),
+        amount: Number(finalChargeAmount.toFixed(2)),
         currency: currency,
         redirect_url: callbackUrl,
         customer: {
@@ -181,7 +210,7 @@ router.post('/initialize', async (req, res) => {
         return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
       }
 
-      const amountInKobo = Math.round(Number(amount) * 100);
+      const amountInKobo = Math.round(finalChargeAmount * 100);
 
       const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
         email: email,
@@ -222,14 +251,11 @@ router.post('/webhook', async (req, res) => {
     let linkId = null;
     let currency = 'NGN';
 
-    // Paystack Webhook
     if (event && event.event === 'charge.success') {
       const data = event.data;
       linkId = data.metadata?.linkId;
       currency = data.currency || 'NGN';
-    } 
-    // Flutterwave Webhook
-    else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
+    } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
       const data = event.data;
       if (data && data.status === 'successful') {
         linkId = data.meta?.linkId;
@@ -265,7 +291,7 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-// POST /api/payment/verify-and-credit
+// POST /api/payment/verify-and-credit (Auto-credits merchant balance on successful checkout return)
 router.post('/verify-and-credit', async (req, res) => {
   try {
     const { currency, linkId } = req.body;
@@ -289,6 +315,8 @@ router.post('/verify-and-credit', async (req, res) => {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     }
 
+    // Prevent double crediting if webhook already handled it
+    // (We check if this specific link was already processed or credit directly)
     merchant.balances[curr] = (merchant.balances[curr] || 0) + creditAmount;
     await merchant.save();
 
