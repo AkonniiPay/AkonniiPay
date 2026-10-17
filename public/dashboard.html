@@ -40,6 +40,7 @@
       <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <h2 class="fw-bold mb-0">Welcome Back, Merchant</h2>
         <div class="d-flex align-items-center gap-2">
+          <button id="syncPaymentBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-repeat me-1"></i> Sync Payment</button>
           <button id="signOutBtn" class="btn btn-outline-danger btn-sm">Sign Out</button>
         </div>
       </div>
@@ -523,6 +524,28 @@
         alert("Network error processing withdrawal.");
         btn.disabled = false;
         btn.innerText = 'Confirm & Withdraw';
+      }
+    });
+
+    // Sync Payment Button Handler
+    document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return alert('Please sign in first.');
+
+      try {
+        const res = await fetch('/api/payment/sync-payment', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(data.message || "Payment successfully synchronized and wallet credited.");
+          window.location.reload();
+        } else {
+          alert(data.message || "Failed to sync payment.");
+        }
+      } catch (err) {
+        console.error("Sync error:", err);
+        alert("Network error syncing payment.");
       }
     });
 
