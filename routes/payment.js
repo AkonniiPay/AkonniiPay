@@ -158,9 +158,8 @@ router.post('/initialize', async (req, res) => {
 
     const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
 
-    const baseAmount = Number(amount || link.amount);
-    const fee = calculateCheckoutFee(baseAmount, currency);
-    const finalChargeAmount = link.feeBearer === 'payer' ? baseAmount + fee : baseAmount;
+    // FIXED: Use the exact total amount sent directly from checkout.html without re-adding fees
+    const finalChargeAmount = Number(amount || link.amount);
 
     // 1. FOREIGN CURRENCY -> FLUTTERWAVE
     if (currency !== 'NGN') {
@@ -315,8 +314,6 @@ router.post('/verify-and-credit', async (req, res) => {
       merchant.balances = { NGN: 0, USD: 0, GBP: 0, EUR: 0 };
     }
 
-    // Prevent double crediting if webhook already handled it
-    // (We check if this specific link was already processed or credit directly)
     merchant.balances[curr] = (merchant.balances[curr] || 0) + creditAmount;
     await merchant.save();
 
