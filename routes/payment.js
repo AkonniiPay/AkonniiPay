@@ -11,19 +11,6 @@ function slugify(text) {
   return text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-// Fair Checkout Fee Calculation (1.5% + ₦10, capped at ₦2000 for NGN; untouched for foreign currencies)
-function calculateCheckoutFee(amount, currency) {
-  const base = parseFloat(amount) || 0;
-  if (base <= 0) return 0;
-
-  const curr = (currency || 'NGN').toUpperCase();
-  if (curr === 'NGN') {
-    const fee = (base * 0.015) + 10;
-    return Math.min(fee, 2000); 
-  }
-  return base * 0.029; // Standard foreign currency gateway card fee
-}
-
 // POST /api/payment/create-link
 router.post('/create-link', authMiddleware, async (req, res) => {
   try {
@@ -49,7 +36,7 @@ router.post('/create-link', authMiddleware, async (req, res) => {
     const finalExpiresAt = (expiryDate || expiresAt) ? new Date(expiryDate || expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const linkId = new mongoose.Types.ObjectId();
-    const baseUrl = `https://akonniipay.top`;
+    const baseUrl = `https://akonniipay.top`; // Updated to official custom domain
     const publicCheckoutUrl = `${baseUrl}/pay/${uniqueSlug}`;
 
     const newLink = new PaymentLink({
@@ -123,21 +110,14 @@ router.get('/link-by-slug/:slug', async (req, res) => {
       return res.status(404).json({ success: false, message: "This payment link is invalid, expired, or has been closed." });
     }
 
-    const fee = calculateCheckoutFee(link.amount, link.currency);
-    const totalDue = link.feeBearer === 'payer' ? link.amount + fee : link.amount;
-
-    const linkObj = link.toObject();
-    linkObj.calculatedFee = fee;
-    linkObj.totalDue = totalDue;
-
-    return res.json({ success: true, link: linkObj });
+    return res.json({ success: true, link });
   } catch (err) {
     console.error("Error fetching link by slug:", err);
     return res.status(500).json({ success: false, message: "Server error fetching payment link." });
   }
 });
 
-// POST /api/payment/initialize
+// POST /api/payment/initialize (Server-to-Server Initialization: Paystack for NGN, Flutterwave for Foreign Currencies)
 router.post('/initialize', async (req, res) => {
   try {
     const { linkId, slug, email, name, amount } = req.body;
@@ -153,10 +133,6 @@ router.post('/initialize', async (req, res) => {
     const callbackUrl = `https://akonniipay.top/dashboard?status=success`;
     const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
 
-    const baseAmount = Number(amount || link.amount);
-    const fee = calculateCheckoutFee(baseAmount, currency);
-    const finalChargeAmount = link.feeBearer === 'payer' ? baseAmount + fee : baseAmount;
-
     // 1. FOREIGN CURRENCY -> FLUTTERWAVE
     if (currency !== 'NGN') {
       const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
@@ -166,21 +142,33 @@ router.post('/initialize', async (req, res) => {
 
       const flwRes = await axios.post('https://api.flutterwave.com/v3/payments', {
         tx_ref: txRef,
-        amount: Number(finalChargeAmount.toFixed(2)),
+        amount: Number(amount),
         currency: currency,
         redirect_url: callbackUrl,
-        customer: { email: email, name: name },
-        meta: { linkId: link._id.toString() },
+        customer: {
+          email: email,
+          name: name
+        },
+        meta: {
+          linkId: link._id.toString()
+        },
         customizations: {
           title: link.title,
           description: `Payment for ${link.title}`
         }
       }, {
-        headers: { Authorization: `Bearer ${flwSecretKey}`, 'Content-Type': 'application/json' }
+        headers: {
+          Authorization: `Bearer ${flwSecretKey}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (flwRes.data && flwRes.data.status === 'success') {
-        return res.json({ success: true, authorization_url: flwRes.data.data.link, reference: txRef });
+        return res.json({
+          success: true,
+          authorization_url: flwRes.data.data.link,
+          reference: txRef
+        });
       } else {
         return res.status(400).json({ success: false, message: "Failed to initialize payment with Flutterwave." });
       }
@@ -193,16 +181,22 @@ router.post('/initialize', async (req, res) => {
         return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
       }
 
-      const amountInKobo = Math.round(finalChargeAmount * 100);
+      const amountInKobo = Math.round(Number(amount) * 100);
 
       const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
         email: email,
         amount: amountInKobo,
         currency: 'NGN',
         callback_url: callbackUrl,
-        metadata: { linkId: link._id.toString(), clientName: name }
+        metadata: {
+          linkId: link._id.toString(),
+          clientName: name
+        }
       }, {
-        headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' }
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (paystackRes.data && paystackRes.data.status) {
@@ -221,18 +215,21 @@ router.post('/initialize', async (req, res) => {
   }
 });
 
-// POST /api/payment/webhook
+// POST /api/payment/webhook (Automated background listener for Paystack & Flutterwave)
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
     let linkId = null;
     let currency = 'NGN';
 
+    // Paystack Webhook
     if (event && event.event === 'charge.success') {
       const data = event.data;
       linkId = data.metadata?.linkId;
       currency = data.currency || 'NGN';
-    } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
+    } 
+    // Flutterwave Webhook
+    else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
       const data = event.data;
       if (data && data.status === 'successful') {
         linkId = data.meta?.linkId;
@@ -255,6 +252,8 @@ router.post('/webhook', async (req, res) => {
 
           merchant.balances[currency] = (merchant.balances[currency] || 0) + merchantCreditAmount;
           await merchant.save();
+
+          console.log(`[WEBHOOK] Credited base amount ${currency} ${merchantCreditAmount} to merchant ${merchant._id}`);
         }
       }
     }
@@ -329,7 +328,7 @@ router.get('/sync-payment', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     console.error("Sync payment error:", err);
-    return res.status(500).json({ success: false, message: "Error syncing payment." });
+    return res.status(500).json({ success: false, message: "Error syncing payments." });
   }
 });
 
