@@ -137,10 +137,10 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   }
 });
 
-// POST /api/payment/initialize (Server-to-Server Initialization: Paystack for NGN, Flutterwave for Foreign Currencies)
+// POST /api/payment/initialize (Server-to-Server Initialization: Paystack for all Cards & NGN, Flutterwave for PayPal/Alternative)
 router.post('/initialize', async (req, res) => {
   try {
-    const { linkId, slug, email, name, amount } = req.body;
+    const { linkId, slug, email, name, amount, paymentMethod } = req.body;
 
     const query = slug ? { slug } : { _id: linkId };
     const link = await PaymentLink.findOne(query);
@@ -151,18 +151,16 @@ router.post('/initialize', async (req, res) => {
 
     const currency = (link.currency || 'NGN').toUpperCase();
     
-    // REDIRECT PAYER BACK TO CHECKOUT SUCCESS PAGE (Prevents dashboard login redirection)
+    // REDIRECT PAYER BACK TO CHECKOUT SUCCESS PAGE
     const callbackUrl = slug 
       ? `https://akonniipay.top/pay/${slug}?status=success&linkId=${link._id}`
       : `https://akonniipay.top/checkout.html?id=${link._id}&status=success`;
 
     const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
-
-    // FIXED: Use the exact total amount sent directly from checkout.html without re-adding fees
     const finalChargeAmount = Number(amount || link.amount);
 
-    // 1. FOREIGN CURRENCY -> FLUTTERWAVE (Enhanced for Virtual Cards like Raenest & Cleva)
-    if (currency !== 'NGN') {
+    // 1. IF PAYPAL IS EXPLICITLY REQUESTED -> FLUTTERWAVE PAYPAL ROUTE
+    if (paymentMethod === 'paypal') {
       const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
       if (!flwSecretKey) {
         return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
@@ -173,15 +171,14 @@ router.post('/initialize', async (req, res) => {
         amount: Number(finalChargeAmount.toFixed(2)),
         currency: currency,
         redirect_url: callbackUrl,
-        payment_options: "card,account,banktransfer",
+        payment_options: "paypal",
         customer: {
           email: email || "customer@akonniipay.top",
           name: name || "Valued Customer",
           phone: req.body.phone || "+1234567890"
         },
         meta: {
-          linkId: link._id.toString(),
-          consumer_mac: "92a3-912ba-119a"
+          linkId: link._id.toString()
         },
         customizations: {
           title: link.title,
@@ -201,24 +198,26 @@ router.post('/initialize', async (req, res) => {
           reference: txRef
         });
       } else {
-        console.error("Flutterwave API Error Response:", flwRes.data);
-        return res.status(400).json({ success: false, message: flwRes.data.message || "Failed to initialize payment with Flutterwave." });
+        console.error("Flutterwave PayPal Error Response:", flwRes.data);
+        return res.status(400).json({ success: false, message: flwRes.data.message || "Failed to initialize PayPal with Flutterwave." });
       }
     } 
     
-    // 2. NGN -> PAYSTACK
+    // 2. ALL OTHER PAYMENTS (Cards / Bank Transfers / Foreign Currency Cards) -> PAYSTACK INTERNATIONAL & LOCAL
     else {
       const secretKey = process.env.PAYSTACK_SECRET_KEY;
       if (!secretKey) {
         return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
       }
 
-      const amountInKobo = Math.round(finalChargeAmount * 100);
+      // For Paystack, if currency is NGN, multiply by 100. For multi-currency Paystack accounts, handle accordingly.
+      const paystackCurrency = currency === 'NGN' ? 'NGN' : currency;
+      const chargeAmountForPaystack = currency === 'NGN' ? Math.round(finalChargeAmount * 100) : Math.round(finalChargeAmount * 100);
 
       const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
         email: email,
-        amount: amountInKobo,
-        currency: 'NGN',
+        amount: chargeAmountForPaystack,
+        currency: paystackCurrency,
         callback_url: callbackUrl,
         metadata: {
           linkId: link._id.toString(),
