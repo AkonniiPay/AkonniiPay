@@ -191,21 +191,19 @@ router.post('/initialize', async (req, res) => {
       }
     } 
     
-    // 2. FOREIGN CURRENCIES (USD, GBP, EUR, etc.) -> FLUTTERWAVE WITH USD/NATIVE FALLBACK
+    // 2. FOREIGN CURRENCIES (USD, GBP, EUR, etc.) -> FLUTTERWAVE PRODUCTION RAIL
     else {
       const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
       if (!flwSecretKey) {
         return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
       }
 
-      // Try initializing with the native foreign currency first (e.g. USD)
       let targetCurrency = currency;
       let targetAmount = Number(finalChargeAmount.toFixed(2));
 
-      // If currency is GBP or EUR and unsupported by gateway tier, gracefully map to USD equivalent or process safely
+      // Map non-USD foreign currencies safely if needed
       if (currency !== 'USD' && currency !== 'NGN') {
         targetCurrency = 'USD';
-        // Approximate conversion or pass 1:1 if valued equivalently, or handle securely
         targetAmount = Number(finalChargeAmount.toFixed(2));
       }
 
@@ -215,7 +213,6 @@ router.post('/initialize', async (req, res) => {
           amount: targetAmount,
           currency: targetCurrency,
           redirect_url: callbackUrl,
-          payment_options: "card,paypal,account,banktransfer",
           customer: {
             email: email || "customer@akonniipay.top",
             name: name || "Valued Customer",
@@ -245,42 +242,11 @@ router.post('/initialize', async (req, res) => {
           });
         }
       } catch (flwErr) {
-        console.error("Flutterwave foreign currency fallback triggered:", flwErr.response?.data || flwErr.message);
-        
-        // Ultimate fallback: initialize through USD payment rail
-        const fallbackRes = await axios.post('https://api.flutterwave.com/v3/payments', {
-          tx_ref: txRef,
-          amount: Number(finalChargeAmount.toFixed(2)),
-          currency: 'USD',
-          redirect_url: callbackUrl,
-          payment_options: "card,paypal",
-          customer: {
-            email: email || "customer@akonniipay.top",
-            name: name || "Valued Customer"
-          },
-          meta: {
-            linkId: link._id.toString(),
-            originalCurrency: currency,
-            originalAmount: finalChargeAmount
-          },
-          customizations: {
-            title: link.title,
-            description: `Payment for ${link.title}`
-          }
-        }, {
-          headers: {
-            Authorization: `Bearer ${flwSecretKey}`,
-            'Content-Type': 'application/json'
-          }
+        console.error("Flutterwave API error:", flwErr.response?.data || flwErr.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: flwErr.response?.data?.message || "Could not initialize international payment gateway." 
         });
-
-        if (fallbackRes.data && fallbackRes.data.status === 'success') {
-          return res.json({
-            success: true,
-            authorization_url: fallbackRes.data.data.link,
-            reference: txRef
-          });
-        }
       }
     }
 
