@@ -173,9 +173,11 @@ router.post('/initialize', async (req, res) => {
         amount: Number(finalChargeAmount.toFixed(2)),
         currency: currency,
         redirect_url: callbackUrl,
+        payment_options: "card,ussd,banktransfer,barter,mobilemoney",
         customer: {
           email: email,
-          name: name
+          name: name,
+          phone: req.body.phone || "+2348000000000"
         },
         meta: {
           linkId: link._id.toString()
@@ -198,7 +200,8 @@ router.post('/initialize', async (req, res) => {
           reference: txRef
         });
       } else {
-        return res.status(400).json({ success: false, message: "Failed to initialize payment with Flutterwave." });
+        console.error("Flutterwave API Error Response:", flwRes.data);
+        return res.status(400).json({ success: false, message: flwRes.data.message || "Failed to initialize payment with Flutterwave." });
       }
     } 
     
