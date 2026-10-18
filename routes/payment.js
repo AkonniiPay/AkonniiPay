@@ -161,7 +161,7 @@ router.post('/initialize', async (req, res) => {
     // FIXED: Use the exact total amount sent directly from checkout.html without re-adding fees
     const finalChargeAmount = Number(amount || link.amount);
 
-    // 1. FOREIGN CURRENCY -> FLUTTERWAVE
+    // 1. FOREIGN CURRENCY -> FLUTTERWAVE (Enhanced for Virtual Cards like Raenest & Cleva)
     if (currency !== 'NGN') {
       const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
       if (!flwSecretKey) {
@@ -173,14 +173,15 @@ router.post('/initialize', async (req, res) => {
         amount: Number(finalChargeAmount.toFixed(2)),
         currency: currency,
         redirect_url: callbackUrl,
-        payment_options: "card,ussd,banktransfer,barter,mobilemoney",
+        payment_options: "card,account,banktransfer",
         customer: {
-          email: email,
-          name: name,
-          phone: req.body.phone || "+2348000000000"
+          email: email || "customer@akonniipay.top",
+          name: name || "Valued Customer",
+          phone: req.body.phone || "+1234567890"
         },
         meta: {
-          linkId: link._id.toString()
+          linkId: link._id.toString(),
+          consumer_mac: "92a3-912ba-119a"
         },
         customizations: {
           title: link.title,
