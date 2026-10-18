@@ -137,7 +137,7 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   }
 });
 
-// POST /api/payment/initialize (Server-to-Server Initialization: Unified Paystack Engine for NGN and USD)
+// POST /api/payment/initialize (Server-to-Server Initialization: Paystack with Flutterwave Fallback)
 router.post('/initialize', async (req, res) => {
   try {
     const { linkId, slug, email, name, amount } = req.body;
@@ -156,14 +156,15 @@ router.post('/initialize', async (req, res) => {
       : `https://akonniipay.top/checkout.html?id=${link._id}&status=success`;
 
     const finalChargeAmount = Number(amount || link.amount);
-    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
 
-    if (!secretKey) {
-      return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
-    }
-
-    // 1. NGN TRANSACTIONS (Paystack in Kobo)
+    // 1. NGN TRANSACTIONS -> PAYSTACK
     if (currency === 'NGN') {
+      if (!paystackSecretKey) {
+        return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
+      }
+
       const amountInKobo = Math.round(finalChargeAmount * 100);
       const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
         email: email || "customer@akonniipay.top",
@@ -177,7 +178,7 @@ router.post('/initialize', async (req, res) => {
         }
       }, {
         headers: {
-          Authorization: `Bearer ${secretKey}`,
+          Authorization: `Bearer ${paystackSecretKey}`,
           'Content-Type': 'application/json'
         }
       });
@@ -191,39 +192,77 @@ router.post('/initialize', async (req, res) => {
       }
     } 
     
-    // 2. USD & FOREIGN CURRENCIES (Paystack in Cents / Native USD without Naira conversion)
+    // 2. FOREIGN CURRENCIES (USD, GBP, EUR) -> TRY PAYSTACK USD FIRST, FALLBACK TO FLUTTERWAVE
     else {
-      let targetCurrency = currency === 'GBP' || currency === 'EUR' ? 'USD' : currency;
-      if (targetCurrency !== 'USD') {
-        targetCurrency = 'USD';
+      // Step A: Attempt Paystack USD Initialization
+      if (paystackSecretKey) {
+        try {
+          const amountInCents = Math.round(finalChargeAmount * 100);
+          const paystackUSDRes = await axios.post('https://api.paystack.co/transaction/initialize', {
+            email: email || "customer@akonniipay.top",
+            amount: amountInCents,
+            currency: 'USD',
+            callback_url: callbackUrl,
+            metadata: {
+              linkId: link._id.toString(),
+              clientName: name,
+              originalCurrency: 'USD'
+            }
+          }, {
+            headers: {
+              Authorization: `Bearer ${paystackSecretKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (paystackUSDRes.data && paystackUSDRes.data.status) {
+            return res.json({
+              success: true,
+              authorization_url: paystackUSDRes.data.data.authorization_url,
+              reference: paystackUSDRes.data.data.reference
+            });
+          }
+        } catch (paystackErr) {
+          console.warn("Paystack USD initialization unverified, falling back to Flutterwave rail:", paystackErr.response?.data?.message || paystackErr.message);
+        }
       }
 
-      // Paystack expects amount in minor currency units (cents -> multiply by 100)
-      const amountInCents = Math.round(finalChargeAmount * 100);
-
-      const paystackForeignRes = await axios.post('https://api.paystack.co/transaction/initialize', {
-        email: email || "customer@akonniipay.top",
-        amount: amountInCents,
-        currency: 'USD',
-        callback_url: callbackUrl,
-        metadata: {
-          linkId: link._id.toString(),
-          clientName: name,
-          originalCurrency: targetCurrency
-        }
-      }, {
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (paystackForeignRes.data && paystackForeignRes.data.status) {
-        return res.json({
-          success: true,
-          authorization_url: paystackForeignRes.data.data.authorization_url,
-          reference: paystackForeignRes.data.data.reference
+      // Step B: Flutterwave Fallback Rail
+      if (flwSecretKey) {
+        const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
+        const flwRes = await axios.post('https://api.flutterwave.com/v3/payments', {
+          tx_ref: txRef,
+          amount: Number(finalChargeAmount.toFixed(2)),
+          currency: 'USD',
+          redirect_url: callbackUrl,
+          customer: {
+            email: email || "customer@akonniipay.top",
+            name: name || "Valued Customer",
+            phone: req.body.phone || "+1234567890"
+          },
+          meta: {
+            linkId: link._id.toString(),
+            originalCurrency: currency,
+            originalAmount: finalChargeAmount
+          },
+          customizations: {
+            title: link.title,
+            description: `Payment for ${link.title}`
+          }
+        }, {
+          headers: {
+            Authorization: `Bearer ${flwSecretKey}`,
+            'Content-Type': 'application/json'
+          }
         });
+
+        if (flwRes.data && flwRes.data.status === 'success') {
+          return res.json({
+            success: true,
+            authorization_url: flwRes.data.data.link,
+            reference: txRef
+          });
+        }
       }
     }
 
@@ -234,7 +273,7 @@ router.post('/initialize', async (req, res) => {
   }
 });
 
-// POST /api/payment/webhook (Automated background listener for Paystack)
+// POST /api/payment/webhook (Automated background listener for Paystack & Flutterwave)
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
@@ -247,6 +286,13 @@ router.post('/webhook', async (req, res) => {
       linkId = data.metadata?.linkId;
       currency = data.metadata?.originalCurrency || data.currency || 'NGN';
       reference = data.reference;
+    } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
+      const data = event.data;
+      if (data && data.status === 'successful') {
+        linkId = data.meta?.linkId;
+        currency = data.meta?.originalCurrency || data.currency || 'USD';
+        reference = data.tx_ref;
+      }
     }
 
     if (linkId) {
