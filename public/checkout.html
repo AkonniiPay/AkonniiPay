@@ -127,21 +127,21 @@
         let baseAmount = Number(link.amount);
         let finalAmount = baseAmount;
         let fee = 0;
+        const currSymbol = link.currency === 'NGN' ? '₦' : (link.currency === 'GBP' ? '£' : (link.currency === 'EUR' ? '€' : '$'));
 
         if (link.feeBearer === 'payer' || link.chargeBearer === 'payer') {
-          // FAIR FEE UPDATE: 1.5% + ₦10 (capped at ₦2000)
           fee = link.currency === 'NGN' ? Math.min((baseAmount * 0.015) + 10, 2000) : baseAmount * 0.029;
           finalAmount = baseAmount + fee;
 
-          document.getElementById('baseAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;
-          document.getElementById('feeAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${fee.toFixed(2)}`;
+          document.getElementById('baseAmountText').innerText = `${currSymbol}${baseAmount.toLocaleString()}`;
+          document.getElementById('feeAmountText').innerText = `${currSymbol}${fee.toFixed(2)}`;
           document.getElementById('feeRow').classList.remove('d-none');
         } else {
-          document.getElementById('baseAmountText').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${baseAmount.toLocaleString()}`;
+          document.getElementById('baseAmountText').innerText = `${currSymbol}${baseAmount.toLocaleString()}`;
         }
 
         document.getElementById('paymentTitle').innerText = link.title;
-        document.getElementById('paymentAmount').innerText = `${link.currency === 'NGN' ? '₦' : '$'}${Math.round(finalAmount).toLocaleString()} ${link.currency || ''}`;
+        document.getElementById('paymentAmount').innerText = `${currSymbol}${Math.round(finalAmount).toLocaleString()} ${link.currency || ''}`;
         document.getElementById('checkoutContent').classList.remove('d-none');
 
         document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
@@ -162,7 +162,8 @@
                 slug: link.slug,
                 email: email,
                 name: name,
-                amount: finalAmount
+                amount: finalAmount,
+                currency: link.currency
               })
             });
 
