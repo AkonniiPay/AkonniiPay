@@ -49,7 +49,7 @@ router.post('/create-link', authMiddleware, async (req, res) => {
     const finalExpiresAt = (expiryDate || expiresAt) ? new Date(expiryDate || expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const linkId = new mongoose.Types.ObjectId();
-    const baseUrl = `https://akonniipay.top`; // Updated to official custom domain
+    const baseUrl = `https://akonniipay.top`;
     const publicCheckoutUrl = `${baseUrl}/pay/${uniqueSlug}`;
 
     const newLink = new PaymentLink({
@@ -137,10 +137,10 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   }
 });
 
-// POST /api/payment/initialize (Server-to-Server Initialization)
+// POST /api/payment/initialize (Server-to-Server Initialization: Paystack for NGN, Flutterwave for Foreign Currencies)
 router.post('/initialize', async (req, res) => {
   try {
-    const { linkId, slug, email, name, amount, paymentMethod } = req.body;
+    const { linkId, slug, email, name, amount } = req.body;
 
     const query = slug ? { slug } : { _id: linkId };
     const link = await PaymentLink.findOne(query);
@@ -159,8 +159,8 @@ router.post('/initialize', async (req, res) => {
     const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
     const finalChargeAmount = Number(amount || link.amount);
 
-    // 1. IF PAYPAL IS EXPLICITLY REQUESTED -> FLUTTERWAVE PAYPAL ROUTE
-    if (paymentMethod === 'paypal') {
+    // 1. FOREIGN CURRENCY (USD, EUR, GBP) -> FLUTTERWAVE
+    if (currency !== 'NGN') {
       const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
       if (!flwSecretKey) {
         return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
@@ -171,7 +171,7 @@ router.post('/initialize', async (req, res) => {
         amount: Number(finalChargeAmount.toFixed(2)),
         currency: currency,
         redirect_url: callbackUrl,
-        payment_options: "paypal",
+        payment_options: "card,paypal,account,banktransfer",
         customer: {
           email: email || "customer@akonniipay.top",
           name: name || "Valued Customer",
@@ -198,93 +198,49 @@ router.post('/initialize', async (req, res) => {
           reference: txRef
         });
       } else {
-        console.error("Flutterwave PayPal Error Response:", flwRes.data);
-        return res.status(400).json({ success: false, message: flwRes.data.message || "Failed to initialize PayPal with Flutterwave." });
+        console.error("Flutterwave API Error Response:", flwRes.data);
+        return res.status(400).json({ success: false, message: flwRes.data.message || "Failed to initialize payment with Flutterwave." });
       }
     } 
     
-    // 2. ALL CARD PAYMENTS & MULTI-CURRENCY -> PAYSTACK
+    // 2. NGN -> PAYSTACK
     else {
       const secretKey = process.env.PAYSTACK_SECRET_KEY;
       if (!secretKey) {
         return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
       }
 
-      // Live conversion rate fallback if Paystack requires NGN amount for foreign cards
-      const USD_NGN_RATE = 1600; 
-      let chargeAmountForPaystack;
-      let paystackCurrency = currency;
+      const amountInKobo = Math.round(finalChargeAmount * 100);
 
-      if (currency === 'NGN') {
-        chargeAmountForPaystack = Math.round(finalChargeAmount * 100);
-      } else {
-        // Attempt USD first; if Paystack rejects unsupported currency, convert to NGN charge amount
-        chargeAmountForPaystack = Math.round(finalChargeAmount * 100);
-      }
+      const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
+        email: email,
+        amount: amountInKobo,
+        currency: 'NGN',
+        callback_url: callbackUrl,
+        metadata: {
+          linkId: link._id.toString(),
+          clientName: name
+        }
+      }, {
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      try {
-        const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
-          email: email,
-          amount: chargeAmountForPaystack,
-          currency: paystackCurrency,
-          callback_url: callbackUrl,
-          metadata: {
-            linkId: link._id.toString(),
-            clientName: name,
-            originalCurrency: currency,
-            originalAmount: finalChargeAmount
-          }
-        }, {
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json'
-          }
+      if (paystackRes.data && paystackRes.data.status) {
+        return res.json({
+          success: true,
+          authorization_url: paystackRes.data.data.authorization_url,
+          reference: paystackRes.data.data.reference
         });
-
-        if (paystackRes.data && paystackRes.data.status) {
-          return res.json({
-            success: true,
-            authorization_url: paystackRes.data.data.authorization_url,
-            reference: paystackRes.data.data.reference
-          });
-        }
-      } catch (paystackErr) {
-        // If Paystack returns currency error for USD/EUR/GBP, process as equivalent NGN card checkout
-        if (currency !== 'NGN') {
-          const ngnEquivalentAmount = Math.round(finalChargeAmount * USD_NGN_RATE * 100);
-          
-          const fallbackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
-            email: email,
-            amount: ngnEquivalentAmount,
-            currency: 'NGN',
-            callback_url: callbackUrl,
-            metadata: {
-              linkId: link._id.toString(),
-              clientName: name,
-              originalCurrency: currency,
-              originalAmount: finalChargeAmount
-            }
-          }, {
-            headers: {
-              Authorization: `Bearer ${secretKey}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (fallbackRes.data && fallbackRes.data.status) {
-            return res.json({
-              success: true,
-              authorization_url: fallbackRes.data.data.authorization_url,
-              reference: fallbackRes.data.data.reference
-            });
-          }
-        }
-        throw paystackErr;
+      } else {
+        return res.status(400).json({ success: false, message: "Failed to initialize payment with Paystack." });
       }
     }
   } catch (err) {
     console.error("Payment initialize error:", err.response?.data || err.message);
-    return res.status(500).json({ success: false, message: err.response?.data?.message || "Error connecting to payment gateway." });
+    return res.status(500).json({ success: false, message: "Error connecting to payment gateway." });
   }
 });
 
@@ -299,7 +255,7 @@ router.post('/webhook', async (req, res) => {
     if (event && event.event === 'charge.success') {
       const data = event.data;
       linkId = data.metadata?.linkId;
-      currency = data.metadata?.originalCurrency || data.currency || 'NGN';
+      currency = data.currency || 'NGN';
       reference = data.reference;
     } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
       const data = event.data;
