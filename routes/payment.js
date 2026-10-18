@@ -11,7 +11,7 @@ function slugify(text) {
   return text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-// Fair Checkout Fee Calculation (1.5% + ₦10, capped at ₦2000 for NGN)
+// Fair Checkout Fee Calculation
 function calculateCheckoutFee(amount, currency) {
   const base = parseFloat(amount) || 0;
   if (base <= 0) return 0;
@@ -137,7 +137,7 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   }
 });
 
-// POST /api/payment/initialize (Server-to-Server Initialization: Robust Multi-Currency Fallback)
+// POST /api/payment/initialize (Server-to-Server Initialization: Unified Paystack Engine for NGN and USD)
 router.post('/initialize', async (req, res) => {
   try {
     const { linkId, slug, email, name, amount } = req.body;
@@ -155,25 +155,25 @@ router.post('/initialize', async (req, res) => {
       ? `https://akonniipay.top/pay/${slug}?status=success&linkId=${link._id}`
       : `https://akonniipay.top/checkout.html?id=${link._id}&status=success`;
 
-    const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
     const finalChargeAmount = Number(amount || link.amount);
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
 
-    // 1. NGN -> PAYSTACK
+    if (!secretKey) {
+      return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
+    }
+
+    // 1. NGN TRANSACTIONS (Paystack in Kobo)
     if (currency === 'NGN') {
-      const secretKey = process.env.PAYSTACK_SECRET_KEY;
-      if (!secretKey) {
-        return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
-      }
-
       const amountInKobo = Math.round(finalChargeAmount * 100);
       const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
-        email: email,
+        email: email || "customer@akonniipay.top",
         amount: amountInKobo,
         currency: 'NGN',
         callback_url: callbackUrl,
         metadata: {
           linkId: link._id.toString(),
-          clientName: name
+          clientName: name,
+          originalCurrency: 'NGN'
         }
       }, {
         headers: {
@@ -191,61 +191,38 @@ router.post('/initialize', async (req, res) => {
       }
     } 
     
-    // 2. FOREIGN CURRENCIES (USD, GBP, EUR, etc.) -> FLUTTERWAVE PRODUCTION RAIL
+    // 2. USD & FOREIGN CURRENCIES (Paystack in Cents / Native USD without Naira conversion)
     else {
-      const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
-      if (!flwSecretKey) {
-        return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
-      }
-
-      let targetCurrency = currency;
-      let targetAmount = Number(finalChargeAmount.toFixed(2));
-
-      // Map non-USD foreign currencies safely if needed
-      if (currency !== 'USD' && currency !== 'NGN') {
+      let targetCurrency = currency === 'GBP' || currency === 'EUR' ? 'USD' : currency;
+      if (targetCurrency !== 'USD') {
         targetCurrency = 'USD';
-        targetAmount = Number(finalChargeAmount.toFixed(2));
       }
 
-      try {
-        const flwRes = await axios.post('https://api.flutterwave.com/v3/payments', {
-          tx_ref: txRef,
-          amount: targetAmount,
-          currency: targetCurrency,
-          redirect_url: callbackUrl,
-          customer: {
-            email: email || "customer@akonniipay.top",
-            name: name || "Valued Customer",
-            phone: req.body.phone || "+1234567890"
-          },
-          meta: {
-            linkId: link._id.toString(),
-            originalCurrency: currency,
-            originalAmount: finalChargeAmount
-          },
-          customizations: {
-            title: link.title,
-            description: `Payment for ${link.title}`
-          }
-        }, {
-          headers: {
-            Authorization: `Bearer ${flwSecretKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
+      // Paystack expects amount in minor currency units (cents -> multiply by 100)
+      const amountInCents = Math.round(finalChargeAmount * 100);
 
-        if (flwRes.data && flwRes.data.status === 'success') {
-          return res.json({
-            success: true,
-            authorization_url: flwRes.data.data.link,
-            reference: txRef
-          });
+      const paystackForeignRes = await axios.post('https://api.paystack.co/transaction/initialize', {
+        email: email || "customer@akonniipay.top",
+        amount: amountInCents,
+        currency: 'USD',
+        callback_url: callbackUrl,
+        metadata: {
+          linkId: link._id.toString(),
+          clientName: name,
+          originalCurrency: targetCurrency
         }
-      } catch (flwErr) {
-        console.error("Flutterwave API error:", flwErr.response?.data || flwErr.message);
-        return res.status(400).json({ 
-          success: false, 
-          message: flwErr.response?.data?.message || "Could not initialize international payment gateway." 
+      }, {
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (paystackForeignRes.data && paystackForeignRes.data.status) {
+        return res.json({
+          success: true,
+          authorization_url: paystackForeignRes.data.data.authorization_url,
+          reference: paystackForeignRes.data.data.reference
         });
       }
     }
@@ -257,7 +234,7 @@ router.post('/initialize', async (req, res) => {
   }
 });
 
-// POST /api/payment/webhook (Automated background listener for Paystack & Flutterwave)
+// POST /api/payment/webhook (Automated background listener for Paystack)
 router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
@@ -270,13 +247,6 @@ router.post('/webhook', async (req, res) => {
       linkId = data.metadata?.linkId;
       currency = data.metadata?.originalCurrency || data.currency || 'NGN';
       reference = data.reference;
-    } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
-      const data = event.data;
-      if (data && data.status === 'successful') {
-        linkId = data.meta?.linkId;
-        currency = data.meta?.originalCurrency || data.currency || 'USD';
-        reference = data.tx_ref;
-      }
     }
 
     if (linkId) {
@@ -437,7 +407,7 @@ router.post('/sync-payment', authMiddleware, async (req, res) => {
       const linkId = txData.metadata?.linkId;
 
       let creditAmount = txData.amount ? txData.amount / 100 : 0;
-      let currency = (txData.currency || 'NGN').toUpperCase();
+      let currency = (txData.metadata?.originalCurrency || txData.currency || 'NGN').toUpperCase();
 
       if (linkId) {
         const link = await PaymentLink.findById(linkId);
