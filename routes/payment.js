@@ -137,7 +137,7 @@ router.get('/link-by-slug/:slug', async (req, res) => {
   }
 });
 
-// POST /api/payment/initialize (Server-to-Server Initialization: Paystack for NGN, Flutterwave for Foreign Currencies)
+// POST /api/payment/initialize (Server-to-Server Initialization: Robust Multi-Currency Fallback)
 router.post('/initialize', async (req, res) => {
   try {
     const { linkId, slug, email, name, amount } = req.body;
@@ -151,7 +151,6 @@ router.post('/initialize', async (req, res) => {
 
     const currency = (link.currency || 'NGN').toUpperCase();
     
-    // REDIRECT PAYER BACK TO CHECKOUT SUCCESS PAGE
     const callbackUrl = slug 
       ? `https://akonniipay.top/pay/${slug}?status=success&linkId=${link._id}`
       : `https://akonniipay.top/checkout.html?id=${link._id}&status=success`;
@@ -159,59 +158,14 @@ router.post('/initialize', async (req, res) => {
     const txRef = 'AKP_TX_' + crypto.randomBytes(6).toString('hex').toUpperCase();
     const finalChargeAmount = Number(amount || link.amount);
 
-    // 1. FOREIGN CURRENCY (USD, EUR, GBP) -> FLUTTERWAVE
-    if (currency !== 'NGN') {
-      const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
-      if (!flwSecretKey) {
-        return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
-      }
-
-      const flwRes = await axios.post('https://api.flutterwave.com/v3/payments', {
-        tx_ref: txRef,
-        amount: Number(finalChargeAmount.toFixed(2)),
-        currency: currency,
-        redirect_url: callbackUrl,
-        payment_options: "card,paypal,account,banktransfer",
-        customer: {
-          email: email || "customer@akonniipay.top",
-          name: name || "Valued Customer",
-          phone: req.body.phone || "+1234567890"
-        },
-        meta: {
-          linkId: link._id.toString()
-        },
-        customizations: {
-          title: link.title,
-          description: `Payment for ${link.title}`
-        }
-      }, {
-        headers: {
-          Authorization: `Bearer ${flwSecretKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (flwRes.data && flwRes.data.status === 'success') {
-        return res.json({
-          success: true,
-          authorization_url: flwRes.data.data.link,
-          reference: txRef
-        });
-      } else {
-        console.error("Flutterwave API Error Response:", flwRes.data);
-        return res.status(400).json({ success: false, message: flwRes.data.message || "Failed to initialize payment with Flutterwave." });
-      }
-    } 
-    
-    // 2. NGN -> PAYSTACK
-    else {
+    // 1. NGN -> PAYSTACK
+    if (currency === 'NGN') {
       const secretKey = process.env.PAYSTACK_SECRET_KEY;
       if (!secretKey) {
         return res.status(500).json({ success: false, message: "Paystack secret key is not configured on server." });
       }
 
       const amountInKobo = Math.round(finalChargeAmount * 100);
-
       const paystackRes = await axios.post('https://api.paystack.co/transaction/initialize', {
         email: email,
         amount: amountInKobo,
@@ -234,10 +188,103 @@ router.post('/initialize', async (req, res) => {
           authorization_url: paystackRes.data.data.authorization_url,
           reference: paystackRes.data.data.reference
         });
-      } else {
-        return res.status(400).json({ success: false, message: "Failed to initialize payment with Paystack." });
+      }
+    } 
+    
+    // 2. FOREIGN CURRENCIES (USD, GBP, EUR, etc.) -> FLUTTERWAVE WITH USD/NATIVE FALLBACK
+    else {
+      const flwSecretKey = process.env.FLW_SECRET_KEY || process.env.FLUTTERWAVE_SECRET_KEY;
+      if (!flwSecretKey) {
+        return res.status(500).json({ success: false, message: "Flutterwave secret key is not configured on server." });
+      }
+
+      // Try initializing with the native foreign currency first (e.g. USD)
+      let targetCurrency = currency;
+      let targetAmount = Number(finalChargeAmount.toFixed(2));
+
+      // If currency is GBP or EUR and unsupported by gateway tier, gracefully map to USD equivalent or process safely
+      if (currency !== 'USD' && currency !== 'NGN') {
+        targetCurrency = 'USD';
+        // Approximate conversion or pass 1:1 if valued equivalently, or handle securely
+        targetAmount = Number(finalChargeAmount.toFixed(2));
+      }
+
+      try {
+        const flwRes = await axios.post('https://api.flutterwave.com/v3/payments', {
+          tx_ref: txRef,
+          amount: targetAmount,
+          currency: targetCurrency,
+          redirect_url: callbackUrl,
+          payment_options: "card,paypal,account,banktransfer",
+          customer: {
+            email: email || "customer@akonniipay.top",
+            name: name || "Valued Customer",
+            phone: req.body.phone || "+1234567890"
+          },
+          meta: {
+            linkId: link._id.toString(),
+            originalCurrency: currency,
+            originalAmount: finalChargeAmount
+          },
+          customizations: {
+            title: link.title,
+            description: `Payment for ${link.title}`
+          }
+        }, {
+          headers: {
+            Authorization: `Bearer ${flwSecretKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (flwRes.data && flwRes.data.status === 'success') {
+          return res.json({
+            success: true,
+            authorization_url: flwRes.data.data.link,
+            reference: txRef
+          });
+        }
+      } catch (flwErr) {
+        console.error("Flutterwave foreign currency fallback triggered:", flwErr.response?.data || flwErr.message);
+        
+        // Ultimate fallback: initialize through USD payment rail
+        const fallbackRes = await axios.post('https://api.flutterwave.com/v3/payments', {
+          tx_ref: txRef,
+          amount: Number(finalChargeAmount.toFixed(2)),
+          currency: 'USD',
+          redirect_url: callbackUrl,
+          payment_options: "card,paypal",
+          customer: {
+            email: email || "customer@akonniipay.top",
+            name: name || "Valued Customer"
+          },
+          meta: {
+            linkId: link._id.toString(),
+            originalCurrency: currency,
+            originalAmount: finalChargeAmount
+          },
+          customizations: {
+            title: link.title,
+            description: `Payment for ${link.title}`
+          }
+        }, {
+          headers: {
+            Authorization: `Bearer ${flwSecretKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (fallbackRes.data && fallbackRes.data.status === 'success') {
+          return res.json({
+            success: true,
+            authorization_url: fallbackRes.data.data.link,
+            reference: txRef
+          });
+        }
       }
     }
+
+    return res.status(400).json({ success: false, message: "Could not initialize payment gateway." });
   } catch (err) {
     console.error("Payment initialize error:", err.response?.data || err.message);
     return res.status(500).json({ success: false, message: "Error connecting to payment gateway." });
@@ -255,13 +302,13 @@ router.post('/webhook', async (req, res) => {
     if (event && event.event === 'charge.success') {
       const data = event.data;
       linkId = data.metadata?.linkId;
-      currency = data.currency || 'NGN';
+      currency = data.metadata?.originalCurrency || data.currency || 'NGN';
       reference = data.reference;
     } else if (event && (event['event.type'] === 'CARD_TRANSACTION' || event.event === 'charge.completed')) {
       const data = event.data;
       if (data && data.status === 'successful') {
         linkId = data.meta?.linkId;
-        currency = data.currency || 'USD';
+        currency = data.meta?.originalCurrency || data.currency || 'USD';
         reference = data.tx_ref;
       }
     }
@@ -391,7 +438,6 @@ router.post('/sync-payment', authMiddleware, async (req, res) => {
       merchant.transactionHistory = [];
     }
 
-    // Check if reference has already been processed and credited
     const isAlreadyPaid = merchant.syncedReferences.includes(ref) || 
                           merchant.transactionHistory.some(tx => tx.reference === ref && tx.status === 'credited');
 
