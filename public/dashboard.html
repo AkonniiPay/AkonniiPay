@@ -457,7 +457,6 @@
       const box = document.getElementById('feeBreakdownBox');
 
       if (amount > 0) {
-        // FAIR WITHDRAWAL FEE UPDATE: ₦10 for up to ₦5k, ₦25 for up to ₦50k, ₦50 max
         let fee = 0;
         if (curr === 'NGN') {
           if (amount <= 5000) fee = 10;
@@ -527,7 +526,6 @@
       }
     });
 
-    // Sync Payment Button Handler (Prompt for Reference Code & Duplicate Prevention)
     document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
       const token = localStorage.getItem('token');
       if (!token) return alert('Please sign in first.');
