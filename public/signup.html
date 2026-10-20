@@ -6,11 +6,35 @@
   <title>AkonniiPay - Sign Up</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .auth-logo {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .auth-logo video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body class="bg-dark text-white d-flex align-items-center justify-content-center min-vh-100">
 
   <div class="card bg-secondary text-white p-4 shadow-lg border-0 rounded-4" style="max-width: 450px; width: 100%;">
-    <h3 class="fw-bold text-center text-primary mb-3">AkonniiPay</h3>
+    <div class="text-center mb-3">
+      <div class="auth-logo">
+        <video autoplay loop muted playsinline>
+          <source src="/animated-logo.webm" type="video/webm">
+        </video>
+      </div>
+      <h3 class="fw-bold text-primary mb-0">AkonniiPay</h3>
+    </div>
+    
     <h5 class="text-center mb-4">Create Your Merchant Account</h5>
 
     <div id="alertBox" class="alert d-none py-2 px-3 mb-3 small"></div>

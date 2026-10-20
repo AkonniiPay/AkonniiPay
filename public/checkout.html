@@ -7,12 +7,33 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .checkout-logo {
+      width: 65px;
+      height: 65px;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .checkout-logo video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
 
   <div class="card border-0 shadow-lg p-4 rounded-4 w-100" style="max-width: 480px;">
     <div class="text-center mb-4">
-      <h3 class="fw-bold text-primary">AkonniiPay</h3>
+      <div class="checkout-logo">
+        <video autoplay loop muted playsinline>
+          <source src="/animated-logo.webm" type="video/webm">
+        </video>
+      </div>
+      <h3 class="fw-bold text-primary mb-0">AkonniiPay</h3>
       <p class="text-muted small">Secure Client Checkout</p>
     </div>
 

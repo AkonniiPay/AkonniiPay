@@ -18,7 +18,7 @@
         }
 
         .hero-section {
-            padding: 60px 0 40px;
+            padding: 40px 0 40px;
         }
 
         .gradient-text {
@@ -41,6 +41,23 @@
             line-height: 1.6;
             max-width: 600px;
             margin: 0 auto 30px;
+        }
+
+        .logo-animation-wrapper {
+            width: 100%;
+            max-width: 220px;
+            aspect-square;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-animation-wrapper video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
         }
 
         .preview-card {
@@ -90,7 +107,10 @@
                 font-size: 2.1rem;
             }
             .hero-section {
-                padding: 40px 15px;
+                padding: 20px 15px;
+            }
+            .logo-animation-wrapper {
+                max-width: 160px;
             }
             .preview-card {
                 padding: 15px;
@@ -103,7 +123,12 @@
 <!-- Navigation Header -->
 <nav class="navbar navbar-dark py-3">
   <div class="container d-flex justify-content-between align-items-center">
-    <a class="navbar-brand fw-bold fs-4" href="/">AkonniiPay</a>
+    <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/">
+        <video autoplay loop muted playsinline style="width: 32px; height: 32px; object-fit: contain;">
+            <source src="/animated-logo.webm" type="video/webm">
+        </video>
+        AkonniiPay
+    </a>
     <div>
         <a href="/login" class="btn btn-sm btn-outline-light px-3 me-2">Log In</a>
         <a href="/signup" class="btn btn-sm btn-primary px-3">Sign Up</a>
@@ -116,6 +141,15 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8 col-12 px-3">
+                
+                <!-- Animated Logo Splash -->
+                <div class="logo-animation-wrapper">
+                    <video autoplay loop muted playsinline>
+                        <source src="/animated-logo.webm" type="video/webm">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+
                 <h1 class="hero-title mb-3">
                     Collect payments from clients <span class="gradient-text">effortlessly, anywhere.</span>
                 </h1>
