@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AkonniiPay - Global Financial Platform for Businesses</title>
+    <title>AkonniiPay - Global Financial Infrastructure for Businesses</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/css/style.css">
@@ -25,6 +25,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
+            scroll-behavior: smooth;
         }
 
         body.akonnii-loading {
@@ -121,10 +122,11 @@
 
         .nav-link-custom {
             color: #334155;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 0.95rem;
-            padding: 8px 16px !important;
+            padding: 8px 18px !important;
             transition: color 0.2s;
+            text-decoration: none;
         }
         .nav-link-custom:hover {
             color: var(--ak-primary);
@@ -134,7 +136,7 @@
             border: 1px solid #cbd5e1;
             color: #0f172a;
             border-radius: 50px;
-            padding: 8px 22px;
+            padding: 9px 24px;
             font-weight: 600;
             text-decoration: none;
             font-size: 0.9rem;
@@ -149,7 +151,7 @@
             background-color: var(--ak-purple-btn);
             color: #ffffff;
             border-radius: 50px;
-            padding: 9px 24px;
+            padding: 10px 26px;
             font-weight: 600;
             text-decoration: none;
             font-size: 0.9rem;
@@ -166,7 +168,7 @@
         }
 
         .hero-heading {
-            font-size: 3.1rem;
+            font-size: 3.2rem;
             font-weight: 800;
             line-height: 1.12;
             letter-spacing: -0.03em;
@@ -201,7 +203,7 @@
             background: transparent;
         }
 
-        /* Hero Image & Floating Badge Container (Payoneer Visual Style) */
+        /* Hero Image Container & Staggered Animated Badges */
         .hero-image-wrapper {
             position: relative;
             border-radius: 28px;
@@ -211,25 +213,26 @@
         .hero-portrait-img {
             width: 100%;
             height: auto;
+            max-height: 520px;
             border-radius: 28px;
             object-fit: cover;
             box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
             border: 1px solid var(--ak-border);
         }
 
-        /* Floating Widgets over Image */
+        /* Continuous Floating Animations for UI Elements */
         .floating-widget-top {
             position: absolute;
-            top: 24px;
+            top: 28px;
             left: -20px;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.96);
             backdrop-filter: blur(10px);
             border: 1px solid var(--ak-border);
             padding: 14px 20px;
             border-radius: 20px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.1);
             z-index: 2;
-            max-width: 220px;
+            animation: floatSlow 4s infinite ease-in-out;
         }
 
         .floating-widget-bottom {
@@ -242,9 +245,36 @@
             border-radius: 20px;
             box-shadow: 0 16px 35px rgba(0,0,0,0.12);
             z-index: 2;
+            animation: floatSlow 4s infinite ease-in-out 2s;
         }
 
-        /* Section Container Cards */
+        @keyframes floatSlow {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* Continuous Partner Marquee Animation */
+        .marquee-wrapper {
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .marquee-track {
+            display: inline-flex;
+            gap: 80px;
+            align-items: center;
+            animation: marqueeSlide 12s linear infinite;
+        }
+
+        @keyframes marqueeSlide {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Section Cards */
         .section-card-wrapper {
             background: #ffffff;
             border-radius: 28px;
@@ -261,11 +291,10 @@
             margin-bottom: 24px;
         }
 
-        /* Feature Cards */
         .feature-card {
             background: var(--ak-bg-light);
             border-radius: 20px;
-            padding: 26px;
+            padding: 28px;
             height: 100%;
             border: 1px solid #f1f5f9;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -275,12 +304,11 @@
             box-shadow: 0 12px 24px rgba(0,0,0,0.05);
         }
 
-        /* Trust Partner Logo Strip */
         .logo-strip {
             background: #ffffff;
             border-top: 1px solid var(--ak-border);
             border-bottom: 1px solid var(--ak-border);
-            padding: 30px 0;
+            padding: 20px 0;
             margin-bottom: 60px;
         }
 
@@ -323,11 +351,11 @@
   </div>
 </div>
 
-<!-- Header / Navigation Bar -->
+<!-- Navigation Header -->
 <header class="navbar-custom sticky-top">
   <div class="container d-flex justify-content-between align-items-center">
-    <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2 text-dark" href="/">
-        <svg viewBox="0 0 400 400" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+    <a class="navbar-brand fw-bold fs-3 d-flex align-items-center gap-2 text-dark" href="/">
+        <svg viewBox="0 0 400 400" width="42" height="42" xmlns="http://www.w3.org/2000/svg">
             <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
             <path d="M 225 155 C 225 100, 280 75, 318 85 C 318 140, 260 165, 225 155 Z" fill="#00cc44" />
             <path d="M 175 295 C 135 295, 140 200, 195 120 C 235 120, 260 210, 245 270 C 230 300, 195 295, 175 295 Z" fill="#1a52de" />
@@ -336,10 +364,10 @@
             <rect x="212" y="215" width="111" height="12" rx="3" fill="#ffffff" />
             <rect x="290" y="250" width="20" height="15" rx="3" fill="#ffffff" />
         </svg>
-        AkonniiPay
+        <span>AkonniiPay</span>
     </a>
 
-    <div class="d-none d-lg-flex align-items-center gap-1">
+    <div class="d-none d-lg-flex align-items-center gap-2">
         <a href="#features" class="nav-link-custom">Products</a>
         <a href="#virtual-accounts" class="nav-link-custom">Solutions</a>
         <a href="#rates" class="nav-link-custom">Pricing & Rates</a>
@@ -373,11 +401,11 @@
                 <small class="text-muted" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. No mandatory guest client registration required.</small>
             </div>
 
-            <!-- Blended Merchant Portrait & Payoneer-Style Floating Widgets -->
+            <!-- Merchant Portrait & Continuous Animated UI Badges -->
             <div class="col-lg-6">
                 <div class="hero-image-wrapper">
                     
-                    <!-- Floating Widget 1: Received Payment Notification -->
+                    <!-- Floating Widget 1: Payment Received -->
                     <div class="floating-widget-top">
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <span class="badge bg-success-subtle text-success p-1 rounded-circle"><i class="bi bi-arrow-down-left fs-6"></i></span>
@@ -386,10 +414,10 @@
                         <h5 class="fw-bold text-success mb-0">$2,200.00 <span class="text-muted font-monospace fs-6">USD</span></h5>
                     </div>
 
-                    <!-- Blended Image -->
-                    <img src="/assets/hero-merchant.jpg" alt="AkonniiPay Merchant" class="hero-portrait-img">
+                    <!-- Clean Image Visual -->
+                    <img src="/assets/hero-merchant.jpg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';" alt="AkonniiPay Merchant" class="hero-portrait-img">
 
-                    <!-- Floating Widget 2: Dedicated Virtual Accounts -->
+                    <!-- Floating Widget 2: Multi-Currency Verified -->
                     <div class="floating-widget-bottom">
                         <div class="d-flex justify-content-between align-items-center gap-3">
                             <div>
@@ -406,20 +434,25 @@
     </div>
 </section>
 
-<!-- Trust Partner Logos Strip -->
+<!-- Animated Marquee Strip (Paystack, Fincra & Flutterwave) -->
 <div class="logo-strip text-center">
     <div class="container">
-        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1px; font-size: 11px;">Powered by Global Banking & Multi-Currency Infrastructure</small>
-        <div class="d-flex justify-content-center align-items-center gap-5 flex-wrap opacity-75">
-            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-shield-lock-fill text-primary me-1"></i> Fincra</span>
-            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Flutterwave</span>
-            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-bank2 me-1"></i> Wema Bank</span>
-            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-building me-1"></i> Barclays UK</span>
+        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1.5px; font-size: 11px;">POWERED BY GLOBAL BANKING & MULTI-CURRENCY INFRASTRUCTURE</small>
+        <div class="marquee-wrapper">
+            <div class="marquee-track">
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
+                <!-- Repeated set for seamless infinite loop -->
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Section: Receive Payments Like a Local -->
+<!-- Section 1: Receive Payments Like a Local -->
 <section class="container mb-5" id="virtual-accounts">
     <div class="section-card-wrapper">
         <h2 class="section-title">Receive payments like a local</h2>
@@ -453,16 +486,71 @@
     </div>
 </section>
 
-<!-- Payoneer-Style Merchant Testimonial / Founder Highlight -->
-<section class="container mb-5">
+<!-- Section 2: Pricing & Rates -->
+<section class="container mb-5" id="rates">
+    <div class="section-card-wrapper">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="section-title mb-1">Transparent Pricing & Rates</h2>
+                <p class="text-muted small mb-0">No hidden maintenance fees or surprise charges.</p>
+            </div>
+            <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-semibold"><i class="bi bi-shield-check me-1"></i> Real-Time Parallel Rates</span>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card border-0 bg-light p-4 rounded-4 h-100">
+                    <span class="text-muted small fw-bold text-uppercase">Direct NGN Collections</span>
+                    <h2 class="fw-bold text-dark mt-2 mb-1">1.5%</h2>
+                    <p class="text-muted small mb-3">Capped at a maximum of ₦2,000 per transaction.</p>
+                    <ul class="list-unstyled small text-muted mb-0">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Bank Transfer & USSD</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Instant Wallet Credit</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Free Guest Checkout</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 bg-light p-4 rounded-4 h-100 border-primary">
+                    <span class="text-primary small fw-bold text-uppercase">Multi-Currency Collection</span>
+                    <h2 class="fw-bold text-primary mt-2 mb-1">2.9%</h2>
+                    <p class="text-muted small mb-3">Flat processing rate for USD, GBP & EUR payments.</p>
+                    <ul class="list-unstyled small text-muted mb-0">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Dedicated Virtual IBANs</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Global Card Processing</li>
+                        <li><i class="bi bi-check-circle-fill text-primary me-2"></i> Zero Cross-Border Markup</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 bg-light p-4 rounded-4 h-100">
+                    <span class="text-muted small fw-bold text-uppercase">Direct Bank Payouts</span>
+                    <h2 class="fw-bold text-dark mt-2 mb-1">₦10 - ₦50</h2>
+                    <p class="text-muted small mb-3">Standard NIBSS bank settlement fee depending on volume.</p>
+                    <ul class="list-unstyled small text-muted mb-0">
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Same-Day Liquidation</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Interbank Market Rate</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Automated Reconciliation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Section 3: Company & Director Statement -->
+<section class="container mb-5" id="about">
     <div class="section-card-wrapper bg-dark text-white p-5 border-0 rounded-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
                 <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3">GLOBAL AMBITION</span>
-                <blockquote class="blockquote fs-4 fw-normal text-light mb-3">
+                <blockquote class="blockquote fs-4 fw-normal text-light mb-4">
                     "AkonniiPay removed the payment friction that was slowing down direct client payments. Immediate collection, transparent fees, and direct FX conversion completely transformed our operations."
                 </blockquote>
-                <p class="mb-0 text-secondary fw-semibold">Luqman Abiodun Oyekunle — <span class="text-white">Director, AKONNII TECHNOLOGIES LTD</span></p>
+                <div>
+                    <h5 class="fw-bold text-white mb-0">Luqman Abiodun Oyewole</h5>
+                    <p class="text-secondary small mb-0">Director — <strong class="text-light">AKONNII TECHNOLOGIES LTD</strong> (RC: 9950190 • TIN: 2622980836455)</p>
+                </div>
             </div>
             <div class="col-lg-4 text-center text-lg-end">
                 <a href="/signup.html" class="btn-pill-solid px-4 py-3 fs-6 d-inline-block">Open Business Account</a>
