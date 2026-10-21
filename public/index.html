@@ -3,17 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AkonniiPay - Direct Client Payment Infrastructure</title>
+    <title>AkonniiPay - Global Financial Platform for Businesses</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        html, body {
-            max-width: 100% !important;
-            overflow-x: hidden !important;
-            background-color: #0b0f19;
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        /* Payoneer Design System Tokens */
+        :root {
+            --ak-bg-light: #f8fafc;
+            --ak-card-bg: #ffffff;
+            --ak-primary: #2563eb;
+            --ak-dark: #0f172a;
+            --ak-text-muted: #64748b;
+            --ak-border: #e2e8f0;
+            --ak-purple-btn: #4c1d95;
+        }
+
+        body {
+            background-color: var(--ak-bg-light);
+            color: var(--ak-dark);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
         }
@@ -22,13 +31,14 @@
             overflow: hidden !important;
         }
 
+        /* 5-Second Global SVG Splash Screen Overlay */
         #akonnii-global-loader {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background-color: #0b0f19 !important;
+            background-color: #ffffff !important;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -48,7 +58,7 @@
         .akonnii-progress-track {
             width: 140px;
             height: 3px;
-            background-color: #1f2937;
+            background-color: #f1f5f9;
             border-radius: 10px;
             overflow: hidden;
             position: relative;
@@ -74,33 +84,7 @@
             pointer-events: none;
         }
 
-        .hero-section {
-            padding: 60px 0 40px;
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 50%, #c084fc 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero-title {
-            font-size: 3rem;
-            font-weight: 800;
-            line-height: 1.15;
-            letter-spacing: -0.02em;
-        }
-
-        .hero-subtext {
-            color: #94a3b8;
-            font-size: 1.1rem;
-            line-height: 1.6;
-            max-width: 650px;
-            margin: 0 auto 35px;
-        }
-
-        /* SVG Logo Animations for Loader */
+        /* Animated SVG Logo Parts */
         .logo-part {
             transform-box: fill-box;
             transform-origin: center;
@@ -109,9 +93,7 @@
             animation-fill-mode: forwards;
             animation-iteration-count: infinite;
             animation-direction: alternate;
-            animation-play-state: running;
         }
-
         .leaf-back { animation-name: popScale; animation-delay: 0.2s; }
         .leaf-front { animation-name: popScale; animation-delay: 0.35s; }
         .blue-body { animation-name: slideRight; animation-delay: 0.1s; }
@@ -121,63 +103,193 @@
             from { transform: translateX(-30px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-
         @keyframes slideUp {
             from { transform: translateY(30px) scale(0.9); opacity: 0; }
             to { transform: translateY(0) scale(1); opacity: 1; }
         }
-
         @keyframes popScale {
             from { transform: scale(0.2); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
 
-        .preview-card {
-            background: #111827;
-            border: 1px solid #1f2937;
-            border-radius: 16px;
-            padding: 20px;
+        /* Navigation Header */
+        .navbar-custom {
+            background-color: #ffffff;
+            border-bottom: 1px solid var(--ak-border);
+            padding: 16px 0;
+        }
+
+        .nav-link-custom {
+            color: #334155;
+            font-weight: 500;
+            font-size: 0.95rem;
+            padding: 8px 16px !important;
+            transition: color 0.2s;
+        }
+        .nav-link-custom:hover {
+            color: var(--ak-primary);
+        }
+
+        .btn-pill-outline {
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
+            border-radius: 50px;
+            padding: 8px 22px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-pill-outline:hover {
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+
+        .btn-pill-solid {
+            background-color: var(--ak-purple-btn);
+            color: #ffffff;
+            border-radius: 50px;
+            padding: 9px 24px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn-pill-solid:hover {
+            background-color: #3b0764;
+            color: #ffffff;
+        }
+
+        /* Hero Section */
+        .hero-container {
+            padding: 70px 0 60px;
+        }
+
+        .hero-heading {
+            font-size: 3.1rem;
+            font-weight: 800;
+            line-height: 1.12;
+            letter-spacing: -0.03em;
+            color: var(--ak-dark);
+        }
+
+        .hero-description {
+            font-size: 1.125rem;
+            line-height: 1.6;
+            color: var(--ak-text-muted);
+            margin-bottom: 32px;
+        }
+
+        /* Email Capture Box */
+        .email-capture-box {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 50px;
+            padding: 6px 6px 6px 20px;
+            display: flex;
+            align-items: center;
             max-width: 480px;
-            margin: 40px auto 0;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
         }
 
-        .window-dots span {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 4px;
-        }
-
-        .btn-primary-custom {
-            background-color: #2563eb;
+        .email-capture-input {
             border: none;
-            padding: 14px 28px;
-            font-weight: 600;
-            border-radius: 10px;
-            color: #fff;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
+            outline: none;
+            width: 100%;
+            font-size: 0.95rem;
+            color: var(--ak-dark);
+            background: transparent;
         }
 
-        .btn-outline-custom {
-            background-color: #1f2937;
-            border: 1px solid #374151;
-            padding: 14px 28px;
-            font-weight: 600;
-            border-radius: 10px;
-            color: #fff;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
+        /* Hero Image & Floating Badge Container (Payoneer Visual Style) */
+        .hero-image-wrapper {
+            position: relative;
+            border-radius: 28px;
+            overflow: visible;
         }
 
-        @media (max-width: 768px) {
-            .hero-title { font-size: 2.2rem; }
-            .hero-section { padding: 30px 15px; }
-            .preview-card { padding: 15px; }
+        .hero-portrait-img {
+            width: 100%;
+            height: auto;
+            border-radius: 28px;
+            object-fit: cover;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+            border: 1px solid var(--ak-border);
+        }
+
+        /* Floating Widgets over Image */
+        .floating-widget-top {
+            position: absolute;
+            top: 24px;
+            left: -20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--ak-border);
+            padding: 14px 20px;
+            border-radius: 20px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+            z-index: 2;
+            max-width: 220px;
+        }
+
+        .floating-widget-bottom {
+            position: absolute;
+            bottom: -20px;
+            right: -10px;
+            background: #ffffff;
+            border: 1px solid var(--ak-border);
+            padding: 16px 22px;
+            border-radius: 20px;
+            box-shadow: 0 16px 35px rgba(0,0,0,0.12);
+            z-index: 2;
+        }
+
+        /* Section Container Cards */
+        .section-card-wrapper {
+            background: #ffffff;
+            border-radius: 28px;
+            border: 1px solid var(--ak-border);
+            padding: 44px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        }
+
+        .section-title {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: var(--ak-dark);
+            margin-bottom: 24px;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: var(--ak-bg-light);
+            border-radius: 20px;
+            padding: 26px;
+            height: 100%;
+            border: 1px solid #f1f5f9;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+        }
+
+        /* Trust Partner Logo Strip */
+        .logo-strip {
+            background: #ffffff;
+            border-top: 1px solid var(--ak-border);
+            border-bottom: 1px solid var(--ak-border);
+            padding: 30px 0;
+            margin-bottom: 60px;
+        }
+
+        @media (max-width: 991px) {
+            .hero-heading { font-size: 2.3rem; }
+            .hero-container { padding: 40px 0; }
+            .floating-widget-top { left: 10px; top: 10px; }
+            .floating-widget-bottom { right: 10px; bottom: 10px; }
+            .section-card-wrapper { padding: 24px; }
         }
     </style>
 </head>
@@ -211,10 +323,10 @@
   </div>
 </div>
 
-<!-- Navigation Header -->
-<nav class="navbar navbar-dark py-3">
+<!-- Header / Navigation Bar -->
+<header class="navbar-custom sticky-top">
   <div class="container d-flex justify-content-between align-items-center">
-    <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2" href="/">
+    <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2 text-dark" href="/">
         <svg viewBox="0 0 400 400" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
             <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
             <path d="M 225 155 C 225 100, 280 75, 318 85 C 318 140, 260 165, 225 155 Z" fill="#00cc44" />
@@ -226,50 +338,134 @@
         </svg>
         AkonniiPay
     </a>
-    <div>
-        <a href="/login" class="btn btn-sm btn-outline-light px-3 me-2">Log In</a>
-        <a href="/signup" class="btn btn-sm btn-primary px-3">Sign Up</a>
+
+    <div class="d-none d-lg-flex align-items-center gap-1">
+        <a href="#features" class="nav-link-custom">Products</a>
+        <a href="#virtual-accounts" class="nav-link-custom">Solutions</a>
+        <a href="#rates" class="nav-link-custom">Pricing & Rates</a>
+        <a href="#about" class="nav-link-custom">Company</a>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <a href="/login.html" class="btn-pill-outline">Sign In</a>
+        <a href="/signup.html" class="btn-pill-solid">Get Started</a>
     </div>
   </div>
-</nav>
+</header>
 
-<!-- Hero Section (Logo Removed from Top of Content) -->
-<section class="hero-section text-center">
+<!-- Hero Section -->
+<section class="hero-container">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8 col-12 px-3">
-                
-                <h1 class="hero-title mb-3">
-                    Collect payments from clients <span class="gradient-text">effortlessly, anywhere.</span>
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <h1 class="hero-heading mb-4">
+                    The financial platform that powers direct client payments
                 </h1>
-                <p class="hero-subtext">
-                    Create instant custom payment links. Let your clients pay via card, bank transfer, or USSD without forced account signups. Receive funds into multi-currency balances.
+                <p class="hero-description">
+                    Collect payments globally, manage multi-currency dedicated virtual accounts, issue payment links, and liquidate funds directly at market FX rates — all on one unified platform.
                 </p>
 
-                <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mb-4">
-                    <a href="/signup" class="btn-primary-custom">Create Free Account</a>
-                    <a href="/login" class="btn-outline-custom">Merchant Dashboard</a>
-                </div>
+                <!-- Email Capture Box -->
+                <form action="/signup.html" method="GET" class="email-capture-box mb-3">
+                    <input type="email" name="email" class="email-capture-input" placeholder="Enter your business email" required>
+                    <button type="submit" class="btn-pill-solid border-0 ms-2" style="white-space: nowrap;">Get Started</button>
+                </form>
+                <small class="text-muted" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. No mandatory guest client registration required.</small>
+            </div>
 
-                <!-- Live Checkout Preview Mockup -->
-                <div class="preview-card text-start">
-                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
-                        <div class="window-dots">
-                            <span style="background: #ef4444;"></span>
-                            <span style="background: #f59e0b;"></span>
-                            <span style="background: #10b981;"></span>
+            <!-- Blended Merchant Portrait & Payoneer-Style Floating Widgets -->
+            <div class="col-lg-6">
+                <div class="hero-image-wrapper">
+                    
+                    <!-- Floating Widget 1: Received Payment Notification -->
+                    <div class="floating-widget-top">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-success-subtle text-success p-1 rounded-circle"><i class="bi bi-arrow-down-left fs-6"></i></span>
+                            <small class="fw-bold text-dark" style="font-size: 11px;">Payment Received</small>
                         </div>
-                        <small class="text-muted text-truncate ms-2" style="font-size: 11px;">akonniipay.onrender.com/checkout</small>
+                        <h5 class="fw-bold text-success mb-0">$2,200.00 <span class="text-muted font-monospace fs-6">USD</span></h5>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <small class="text-uppercase text-muted fw-bold d-block" style="font-size: 11px;">Payment Request</small>
-                            <h5 class="fw-bold mb-0 mt-1">Video Editing Services</h5>
-                        </div>
-                        <h4 class="fw-bold text-success mb-0">$350.00</h4>
-                    </div>
-                </div>
 
+                    <!-- Blended Image -->
+                    <img src="/assets/hero-merchant.jpg" alt="AkonniiPay Merchant" class="hero-portrait-img">
+
+                    <!-- Floating Widget 2: Dedicated Virtual Accounts -->
+                    <div class="floating-widget-bottom">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
+                            <div>
+                                <small class="text-muted fw-bold d-block" style="font-size: 10px;">MULTI-CURRENCY BALANCE</small>
+                                <span class="fw-bold text-dark fs-6">USD • GBP • EUR • NGN</span>
+                            </div>
+                            <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Verified</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Trust Partner Logos Strip -->
+<div class="logo-strip text-center">
+    <div class="container">
+        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1px; font-size: 11px;">Powered by Global Banking & Multi-Currency Infrastructure</small>
+        <div class="d-flex justify-content-center align-items-center gap-5 flex-wrap opacity-75">
+            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-shield-lock-fill text-primary me-1"></i> Fincra</span>
+            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Flutterwave</span>
+            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-bank2 me-1"></i> Wema Bank</span>
+            <span class="fw-bold fs-5 text-secondary"><i class="bi bi-building me-1"></i> Barclays UK</span>
+        </div>
+    </div>
+</div>
+
+<!-- Section: Receive Payments Like a Local -->
+<section class="container mb-5" id="virtual-accounts">
+    <div class="section-card-wrapper">
+        <h2 class="section-title">Receive payments like a local</h2>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="fs-2 text-primary mb-3"><i class="bi bi-globe-americas"></i></div>
+                    <h5 class="fw-bold">Receiving Virtual Accounts</h5>
+                    <p class="text-muted small">Get dedicated multi-currency accounts (USD, GBP, EUR, NGN) to receive direct wire transfers from clients.</p>
+                    <a href="/signup.html" class="text-primary fw-semibold small text-decoration-none">Explore Accounts <i class="bi bi-arrow-right"></i></a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="fs-2 text-primary mb-3"><i class="bi bi-link-45deg"></i></div>
+                    <h5 class="fw-bold">Custom Payment Links</h5>
+                    <p class="text-muted small">Send instant payment links to clients anywhere in the world and track status live in your dashboard.</p>
+                    <a href="/signup.html" class="text-primary fw-semibold small text-decoration-none">Generate Link <i class="bi bi-arrow-right"></i></a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="fs-2 text-primary mb-3"><i class="bi bi-currency-exchange"></i></div>
+                    <h5 class="fw-bold">Smart FX Liquidation</h5>
+                    <p class="text-muted small">Convert foreign currencies directly into local bank payouts at optimum real-market parallel exchange rates.</p>
+                    <a href="/signup.html" class="text-primary fw-semibold small text-decoration-none">View FX Rates <i class="bi bi-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Payoneer-Style Merchant Testimonial / Founder Highlight -->
+<section class="container mb-5">
+    <div class="section-card-wrapper bg-dark text-white p-5 border-0 rounded-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-8">
+                <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3">GLOBAL AMBITION</span>
+                <blockquote class="blockquote fs-4 fw-normal text-light mb-3">
+                    "AkonniiPay removed the payment friction that was slowing down direct client payments. Immediate collection, transparent fees, and direct FX conversion completely transformed our operations."
+                </blockquote>
+                <p class="mb-0 text-secondary fw-semibold">Luqman Abiodun Oyekunle — <span class="text-white">Director, AKONNII TECHNOLOGIES LTD</span></p>
+            </div>
+            <div class="col-lg-4 text-center text-lg-end">
+                <a href="/signup.html" class="btn-pill-solid px-4 py-3 fs-6 d-inline-block">Open Business Account</a>
             </div>
         </div>
     </div>
@@ -283,7 +479,7 @@
         loader.classList.add('hidden');
         document.body.classList.remove('akonnii-loading');
       }
-    }, 5000); // 5-Second Splash Duration
+    }, 5000); // 5-Second Duration
   });
 </script>
 </body>
