@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AkonniiPay - Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -149,21 +149,10 @@
   <div class="d-flex" id="wrapper">
     <!-- Sidebar -->
     <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
-      <h3 class="fw-bold fs-4 mb-4 text-primary d-flex align-items-center gap-2">
-        <svg viewBox="0 0 400 400" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
-            <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
-            <path d="M 225 155 C 225 100, 280 75, 318 85 C 318 140, 260 165, 225 155 Z" fill="#00cc44" />
-            <path d="M 175 295 C 135 295, 140 200, 195 120 C 235 120, 260 210, 245 270 C 230 300, 195 295, 175 295 Z" fill="#1a52de" />
-            <rect x="200" y="195" width="135" height="92" rx="18" fill="#ffffff" />
-            <rect x="206" y="201" width="123" height="80" rx="14" fill="#0073e6" />
-            <rect x="212" y="215" width="111" height="12" rx="3" fill="#ffffff" />
-            <rect x="290" y="250" width="20" height="15" rx="3" fill="#ffffff" />
-        </svg>
-        AkonniiPay
-      </h3>
+      <h3 class="fw-bold fs-4 mb-4 text-primary d-flex align-items-center gap-2">AkonniiPay</h3>
       <ul class="nav nav-pills flex-column mb-auto">
         <li class="nav-item mb-2">
-          <a href="/dashboard.html" class="nav-link active text-white"><i class="bi bi-house-door me-2"></i> Home</a>
+          <a href="/dashboard" class="nav-link active text-white"><i class="bi bi-house-door me-2"></i> Home</a>
         </li>
         <li class="nav-item mb-2">
           <a href="/generate-link.html" class="nav-link text-white-50"><i class="bi bi-link-45deg me-2"></i> Generate Link</a>
@@ -185,7 +174,7 @@
       
       <!-- Top Bar Header -->
       <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-wrap gap-2">
-        <h2 class="fw-bold mb-0 fs-3">Welcome Back, <span class="userFullName">Merchant</span></h2>
+        <h2 class="fw-bold mb-0">Welcome Back, Merchant</h2>
         <div class="d-flex align-items-center gap-2">
           <button id="syncPaymentBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-repeat me-1"></i> Sync Payment</button>
           <button id="signOutBtn" class="btn btn-outline-danger btn-sm">Sign Out</button>
@@ -203,51 +192,51 @@
         <div class="col-md-3 col-6">
           <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="NGN" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
             <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted small fw-semibold">NGN Balance</span>
+              <span class="text-muted small fw-semibold">NGN Platform Balance</span>
               <i class="bi bi-wallet2 text-primary"></i>
             </div>
-            <h3 class="fw-bold mt-2 mb-0 fs-4" id="ngnBalance">₦0</h3>
-            <span class="text-success small mt-1 d-inline-block" style="font-size: 11px;"><i class="bi bi-arrow-up-right"></i> Withdraw</span>
+            <h3 class="fw-bold mt-2 mb-0" id="ngnBalance">₦0</h3>
+            <span class="text-success small mt-1 d-inline-block"><i class="bi bi-arrow-up-right"></i> Click to withdraw</span>
           </div>
         </div>
         <div class="col-md-3 col-6">
           <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="USD" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
             <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted small fw-semibold">USD Balance</span>
+              <span class="text-muted small fw-semibold">USD Platform Balance</span>
               <i class="bi bi-wallet2 text-primary"></i>
             </div>
-            <h3 class="fw-bold mt-2 mb-0 fs-4" id="usdBalance">$0.00</h3>
-            <span class="text-success small mt-1 d-inline-block" style="font-size: 11px;"><i class="bi bi-arrow-up-right"></i> Withdraw</span>
+            <h3 class="fw-bold mt-2 mb-0" id="usdBalance">$0.00</h3>
+            <span class="text-success small mt-1 d-inline-block"><i class="bi bi-arrow-up-right"></i> Click to withdraw</span>
           </div>
         </div>
         <div class="col-md-3 col-6">
           <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="GBP" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
             <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted small fw-semibold">GBP Balance</span>
+              <span class="text-muted small fw-semibold">GBP Platform Balance</span>
               <i class="bi bi-wallet2 text-primary"></i>
             </div>
-            <h3 class="fw-bold mt-2 mb-0 fs-4" id="gbpBalance">£0.00</h3>
-            <span class="text-success small mt-1 d-inline-block" style="font-size: 11px;"><i class="bi bi-arrow-up-right"></i> Withdraw</span>
+            <h3 class="fw-bold mt-2 mb-0" id="gbpBalance">£0.00</h3>
+            <span class="text-success small mt-1 d-inline-block"><i class="bi bi-arrow-up-right"></i> Click to withdraw</span>
           </div>
         </div>
         <div class="col-md-3 col-6">
           <div class="card border-0 shadow-sm p-3 rounded-3">
             <span class="text-muted small fw-semibold">KYC Status</span>
-            <h4 class="fw-bold text-success mt-2 mb-0 fs-5" id="kycStatusBadge">Unverified</h4>
-            <span class="text-muted small mt-1 d-inline-block" id="kycSubText" style="font-size: 11px;">Verification Required</span>
+            <h4 class="fw-bold text-success mt-2 mb-0" id="kycStatusBadge">Unverified</h4>
+            <span class="text-muted small mt-1 d-inline-block" id="kycSubText">Verification Required</span>
           </div>
         </div>
       </div>
 
       <!-- Virtual Accounts Section -->
-      <h4 class="fw-bold mb-3 fs-5">Your Dedicated Virtual Accounts & Deposit Addresses</h4>
+      <h4 class="fw-bold mb-3">Your Dedicated Virtual Accounts & Deposit Addresses</h4>
       <div class="row g-3 mb-4" id="virtualAccountsRow">
         <!-- Dynamic content injected here depending on KYC state -->
       </div>
 
       <!-- Payment Link Records -->
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="fw-bold mb-0 fs-5">Payment Link Records</h4>
+        <h4 class="fw-bold mb-0">Payment Link Records</h4>
         <a href="/generate-link.html" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i> Create Link</a>
       </div>
       <div class="card border-0 shadow-sm p-3 rounded-3 mb-4">
@@ -405,11 +394,11 @@
 
           if (isVerified) {
             kycBadge.innerText = 'Verified';
-            kycBadge.className = 'fw-bold text-success mt-2 mb-0 fs-5';
+            kycBadge.className = 'fw-bold text-success mt-2 mb-0';
             kycSub.innerText = 'Fully Activated';
           } else {
             kycBadge.innerText = 'Unverified';
-            kycBadge.className = 'fw-bold text-danger mt-2 mb-0 fs-5';
+            kycBadge.className = 'fw-bold text-danger mt-2 mb-0';
             kycSub.innerText = 'Verification Required';
           }
 

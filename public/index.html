@@ -132,13 +132,12 @@
             border: 1px solid #cbd5e1;
             color: #0f172a;
             border-radius: 50px;
-            padding: 8px 18px;
+            padding: 8px 16px;
             font-weight: 600;
             text-decoration: none;
             font-size: 0.85rem;
             white-space: nowrap;
             transition: all 0.2s;
-            display: inline-block;
         }
         .btn-pill-outline:hover {
             background-color: #f1f5f9;
@@ -149,13 +148,12 @@
             background-color: var(--ak-purple-btn);
             color: #ffffff;
             border-radius: 50px;
-            padding: 8px 20px;
+            padding: 8px 18px;
             font-weight: 600;
             text-decoration: none;
             font-size: 0.85rem;
             white-space: nowrap;
             transition: background 0.2s;
-            display: inline-block;
         }
         .btn-pill-solid:hover {
             background-color: #3b0764;
@@ -167,25 +165,25 @@
         }
 
         .hero-heading {
-            font-size: 3rem;
+            font-size: 3.2rem;
             font-weight: 800;
-            line-height: 1.15;
+            line-height: 1.12;
             letter-spacing: -0.03em;
             color: var(--ak-dark);
         }
 
         .hero-description {
-            font-size: 1.1rem;
+            font-size: 1.125rem;
             line-height: 1.6;
             color: var(--ak-text-muted);
-            margin-bottom: 28px;
+            margin-bottom: 32px;
         }
 
         .email-capture-box {
             background: #ffffff;
             border: 1px solid #cbd5e1;
             border-radius: 50px;
-            padding: 6px 6px 6px 18px;
+            padding: 6px 6px 6px 20px;
             display: flex;
             align-items: center;
             max-width: 480px;
@@ -210,7 +208,7 @@
         .hero-portrait-img {
             width: 100%;
             height: auto;
-            max-height: 480px;
+            max-height: 520px;
             border-radius: 28px;
             object-fit: cover;
             box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
@@ -219,13 +217,13 @@
 
         .floating-widget-top {
             position: absolute;
-            top: 20px;
-            left: -15px;
+            top: 28px;
+            left: -20px;
             background: rgba(255, 255, 255, 0.96);
             backdrop-filter: blur(10px);
             border: 1px solid var(--ak-border);
-            padding: 12px 18px;
-            border-radius: 18px;
+            padding: 14px 20px;
+            border-radius: 20px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.1);
             z-index: 2;
             animation: floatSlow 4s infinite ease-in-out;
@@ -233,12 +231,12 @@
 
         .floating-widget-bottom {
             position: absolute;
-            bottom: -15px;
+            bottom: -20px;
             right: -10px;
             background: #ffffff;
             border: 1px solid var(--ak-border);
-            padding: 14px 18px;
-            border-radius: 18px;
+            padding: 16px 22px;
+            border-radius: 20px;
             box-shadow: 0 16px 35px rgba(0,0,0,0.12);
             z-index: 2;
             animation: floatSlow 4s infinite ease-in-out 2s;
@@ -254,12 +252,12 @@
             overflow: hidden;
             white-space: nowrap;
             position: relative;
-            padding: 15px 0;
+            padding: 20px 0;
         }
 
         .marquee-track {
             display: inline-flex;
-            gap: 60px;
+            gap: 80px;
             align-items: center;
             animation: marqueeSlide 12s linear infinite;
         }
@@ -273,51 +271,55 @@
             background: #ffffff;
             border-radius: 28px;
             border: 1px solid var(--ak-border);
-            padding: 36px;
+            padding: 44px;
             margin-bottom: 40px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
         }
 
         .section-title {
-            font-size: 2rem;
+            font-size: 2.1rem;
             font-weight: 700;
             color: var(--ak-dark);
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .feature-card {
             background: var(--ak-bg-light);
             border-radius: 20px;
-            padding: 24px;
+            padding: 28px;
             height: 100%;
             border: 1px solid #f1f5f9;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.05);
         }
 
         .logo-strip {
             background: #ffffff;
             border-top: 1px solid var(--ak-border);
             border-bottom: 1px solid var(--ak-border);
-            padding: 15px 0;
-            margin-bottom: 40px;
+            padding: 20px 0;
+            margin-bottom: 60px;
         }
 
-        @media (max-width: 768px) {
-            .hero-heading { font-size: 2.1rem; }
-            .hero-container { padding: 30px 0; }
-            .floating-widget-top { left: 5px; top: 10px; padding: 10px 14px; }
-            .floating-widget-bottom { right: 5px; bottom: 5px; padding: 10px 14px; }
-            .section-card-wrapper { padding: 20px; }
-            .btn-pill-outline, .btn-pill-solid { padding: 6px 14px; font-size: 0.8rem; }
+        @media (max-width: 991px) {
+            .hero-heading { font-size: 2.3rem; }
+            .hero-container { padding: 40px 0; }
+            .floating-widget-top { left: 10px; top: 10px; }
+            .floating-widget-bottom { right: 10px; bottom: 10px; }
+            .section-card-wrapper { padding: 24px; }
             .brand-text { font-size: 1.25rem !important; }
         }
     </style>
 </head>
 <body class="akonnii-loading">
 
-<!-- AkonniiPay Global Brand Loader -->
+<!-- AkonniiPay Global Brand Loader (5-Second Animated SVG Splash) -->
 <div id="akonnii-global-loader">
   <div class="akonnii-loader-body">
-    <div style="width: 150px; height: 150px; display: flex; align-items: center; justify-content: center;">
+    <div style="width: 160px; height: 160px; display: flex; align-items: center; justify-content: center;">
       <svg viewBox="0 0 400 400" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <g class="logo-part leaf-back">
           <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
@@ -342,11 +344,11 @@
   </div>
 </div>
 
-<!-- Header / Navigation Bar -->
+<!-- Navigation Header -->
 <header class="navbar-custom sticky-top">
   <div class="container d-flex justify-content-between align-items-center">
     <a class="navbar-brand fw-bold d-flex align-items-center gap-2 text-dark m-0" href="/">
-        <svg viewBox="0 0 400 400" width="34" height="34" xmlns="http://www.w3.org/2000/svg">
+        <svg viewBox="0 0 400 400" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
             <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
             <path d="M 225 155 C 225 100, 280 75, 318 85 C 318 140, 260 165, 225 155 Z" fill="#00cc44" />
             <path d="M 175 295 C 135 295, 140 200, 195 120 C 235 120, 260 210, 245 270 C 230 300, 195 295, 175 295 Z" fill="#1a52de" />
@@ -375,26 +377,28 @@
 <!-- Hero Section -->
 <section class="hero-container">
     <div class="container">
-        <div class="row align-items-center g-4">
+        <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <h1 class="hero-heading mb-3">
+                <h1 class="hero-heading mb-4">
                     The financial platform that powers direct client payments
                 </h1>
                 <p class="hero-description">
                     Collect payments globally, manage multi-currency dedicated virtual accounts, issue payment links, and liquidate funds directly at market FX rates — all on one unified platform.
                 </p>
 
+                <!-- Email Capture Box -->
                 <form action="/signup.html" method="GET" class="email-capture-box mb-3">
                     <input type="email" name="email" class="email-capture-input" placeholder="Enter your business email" required>
-                    <button type="submit" class="btn-pill-solid border-0 ms-2">Get Started</button>
+                    <button type="submit" class="btn-pill-solid border-0 ms-2" style="white-space: nowrap;">Get Started</button>
                 </form>
-                <small class="text-muted d-block" style="font-size: 11px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. No mandatory guest client registration required.</small>
+                <small class="text-muted" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. No mandatory guest client registration required.</small>
             </div>
 
-            <!-- Merchant Portrait & Animated UI Badges -->
-            <div class="col-lg-6 mt-4 mt-lg-0">
+            <!-- Merchant Portrait & Continuous Animated UI Badges -->
+            <div class="col-lg-6">
                 <div class="hero-image-wrapper">
                     
+                    <!-- Floating Widget 1: Payment Received -->
                     <div class="floating-widget-top">
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <span class="badge bg-success-subtle text-success p-1 rounded-circle"><i class="bi bi-arrow-down-left fs-6"></i></span>
@@ -403,15 +407,17 @@
                         <h5 class="fw-bold text-success mb-0">$2,200.00 <span class="text-muted font-monospace fs-6">USD</span></h5>
                     </div>
 
+                    <!-- Clean Image Visual -->
                     <img src="/assets/hero-merchant.jpg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';" alt="AkonniiPay Merchant" class="hero-portrait-img">
 
+                    <!-- Floating Widget 2: Multi-Currency Verified -->
                     <div class="floating-widget-bottom">
-                        <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
                             <div>
-                                <small class="text-muted fw-bold d-block" style="font-size: 9px;">MULTI-CURRENCY BALANCE</small>
-                                <span class="fw-bold text-dark small">USD • GBP • EUR • NGN</span>
+                                <small class="text-muted fw-bold d-block" style="font-size: 10px;">MULTI-CURRENCY BALANCE</small>
+                                <span class="fw-bold text-dark fs-6">USD • GBP • EUR • NGN</span>
                             </div>
-                            <span class="badge bg-primary rounded-pill px-2 py-1 small"><i class="bi bi-check-circle-fill me-1"></i> Verified</span>
+                            <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Verified</span>
                         </div>
                     </div>
 
@@ -421,18 +427,19 @@
     </div>
 </section>
 
-<!-- Animated Marquee Strip -->
+<!-- Animated Marquee Strip (Paystack, Fincra & Flutterwave) -->
 <div class="logo-strip text-center">
     <div class="container">
-        <small class="text-uppercase text-muted fw-bold d-block mb-2" style="letter-spacing: 1.5px; font-size: 10px;">POWERED BY GLOBAL BANKING INFRASTRUCTURE</small>
+        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1.5px; font-size: 11px;">POWERED BY GLOBAL BANKING & MULTI-CURRENCY INFRASTRUCTURE</small>
         <div class="marquee-wrapper">
             <div class="marquee-track">
-                <span class="fw-bold fs-5 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
-                <span class="fw-bold fs-5 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
-                <span class="fw-bold fs-5 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
-                <span class="fw-bold fs-5 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
-                <span class="fw-bold fs-5 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
-                <span class="fw-bold fs-5 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
+                <!-- Repeated set for seamless infinite loop -->
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
+                <span class="fw-bold fs-4 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
             </div>
         </div>
     </div>
@@ -526,11 +533,11 @@
 
 <!-- Section 3: Company & Director Statement -->
 <section class="container mb-5" id="about">
-    <div class="section-card-wrapper bg-dark text-white p-4 p-md-5 border-0 rounded-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+    <div class="section-card-wrapper bg-dark text-white p-5 border-0 rounded-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
                 <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3">GLOBAL AMBITION</span>
-                <blockquote class="blockquote fs-5 fs-md-4 fw-normal text-light mb-4">
+                <blockquote class="blockquote fs-4 fw-normal text-light mb-4">
                     "AkonniiPay removed the payment friction that was slowing down direct client payments. Immediate collection, transparent fees, and direct FX conversion completely transformed our operations."
                 </blockquote>
                 <div>
@@ -553,7 +560,7 @@
         loader.classList.add('hidden');
         document.body.classList.remove('akonnii-loading');
       }
-    }, 5000);
+    }, 5000); // 5-Second Duration
   });
 </script>
 </body>
