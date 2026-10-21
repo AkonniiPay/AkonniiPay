@@ -95,15 +95,17 @@
         to { transform: scale(1); opacity: 1; }
     }
 
-    /* Mobile Dropdown Navigation Styles */
-    .mobile-nav-dropdown {
-      display: none;
+    /* STRICT MOBILE NAVIGATION DROPDOWN FIXES */
+    .mobile-dashboard-dropdown-container {
+      display: none !important;
     }
 
     @media (max-width: 768px) {
       #wrapper { flex-direction: column !important; }
-      #sidebar-wrapper { display: none !important; } /* Hide heavy vertical sidebar on mobile */
-      .mobile-nav-dropdown { display: block !important; } /* Show clean dropdown menu on mobile */
+      #sidebar-wrapper { display: none !important; } /* Hide dark sidebar entirely on mobile */
+      .mobile-dashboard-dropdown-container {
+        display: block !important; /* Show prominent dropdown selection box on top */
+      }
       #page-content-wrapper { padding: 16px !important; }
     }
   </style>
@@ -139,7 +141,7 @@
   </div>
 
   <div class="d-flex" id="wrapper">
-    <!-- Desktop Sidebar -->
+    <!-- Desktop Sidebar (Hidden on Mobile) -->
     <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
       <h3 class="fw-bold fs-4 mb-4 text-primary d-flex align-items-center gap-2">AkonniiPay</h3>
       <ul class="nav nav-pills flex-column mb-auto">
@@ -164,11 +166,19 @@
     <!-- Main Page Content -->
     <div id="page-content-wrapper" class="w-100 p-4">
 
-      <!-- Mobile Dropdown Navigation Menu -->
-      <div class="mobile-nav-dropdown mb-3 p-3 bg-dark text-white rounded-3">
+      <!-- MOBILE ONLY: SELECT DROPDOWN NAVIGATION MENU -->
+      <div class="mobile-dashboard-dropdown-container mb-3 p-3 bg-dark text-white rounded-3 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="fw-bold text-primary fs-5">AkonniiPay</span>
-          <small class="text-muted">Navigation Menu</small>
+          <div class="d-flex align-items-center gap-2">
+            <svg viewBox="0 0 400 400" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
+              <path d="M 225 155 C 225 100, 280 75, 318 85 C 318 140, 260 165, 225 155 Z" fill="#00cc44" />
+              <path d="M 175 295 C 135 295, 140 200, 195 120 C 235 120, 260 210, 245 270 C 230 300, 195 295, 175 295 Z" fill="#1a52de" />
+              <rect x="200" y="195" width="135" height="92" rx="18" fill="#ffffff" />
+            </svg>
+            <span class="fw-bold text-primary">AkonniiPay</span>
+          </div>
+          <small class="text-white-50">Select Page Dropdown</small>
         </div>
         <select class="form-select bg-secondary text-white border-0 fw-semibold" onchange="if(this.value) window.location.href=this.value;">
           <option value="/dashboard.html" selected>🏠 Home (Dashboard)</option>
