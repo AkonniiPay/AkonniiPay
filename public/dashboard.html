@@ -95,30 +95,22 @@
         to { transform: scale(1); opacity: 1; }
     }
 
-    /* Mobile Responsive Sidebar Fixes */
+    /* Mobile Dropdown Navigation Styles */
+    .mobile-nav-dropdown {
+      display: none;
+    }
+
     @media (max-width: 768px) {
       #wrapper { flex-direction: column !important; }
-      #sidebar-wrapper {
-        min-width: 100% !important;
-        min-height: auto !important;
-        padding: 15px !important;
-      }
-      #sidebar-wrapper ul {
-        display: flex !important;
-        flex-direction: row !important;
-        overflow-x: auto !important;
-        white-space: nowrap !important;
-        gap: 8px !important;
-        margin-bottom: 0 !important;
-      }
-      #sidebar-wrapper ul li { margin-bottom: 0 !important; }
+      #sidebar-wrapper { display: none !important; } /* Hide heavy vertical sidebar on mobile */
+      .mobile-nav-dropdown { display: block !important; } /* Show clean dropdown menu on mobile */
       #page-content-wrapper { padding: 16px !important; }
     }
   </style>
 </head>
 <body class="bg-light akonnii-loading">
 
-  <!-- AkonniiPay Global Brand Loader (5-Second Animated SVG Splash) -->
+  <!-- AkonniiPay Global Brand Loader -->
   <div id="akonnii-global-loader">
     <div class="akonnii-loader-body">
       <div style="width: 160px; height: 160px; display: flex; align-items: center; justify-content: center;">
@@ -147,12 +139,12 @@
   </div>
 
   <div class="d-flex" id="wrapper">
-    <!-- Sidebar -->
+    <!-- Desktop Sidebar -->
     <div class="bg-dark text-white p-3" id="sidebar-wrapper" style="min-width: 240px; min-height: 100vh;">
       <h3 class="fw-bold fs-4 mb-4 text-primary d-flex align-items-center gap-2">AkonniiPay</h3>
       <ul class="nav nav-pills flex-column mb-auto">
         <li class="nav-item mb-2">
-          <a href="/dashboard" class="nav-link active text-white"><i class="bi bi-house-door me-2"></i> Home</a>
+          <a href="/dashboard.html" class="nav-link active text-white"><i class="bi bi-house-door me-2"></i> Home</a>
         </li>
         <li class="nav-item mb-2">
           <a href="/generate-link.html" class="nav-link text-white-50"><i class="bi bi-link-45deg me-2"></i> Generate Link</a>
@@ -171,10 +163,25 @@
 
     <!-- Main Page Content -->
     <div id="page-content-wrapper" class="w-100 p-4">
+
+      <!-- Mobile Dropdown Navigation Menu -->
+      <div class="mobile-nav-dropdown mb-3 p-3 bg-dark text-white rounded-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="fw-bold text-primary fs-5">AkonniiPay</span>
+          <small class="text-muted">Navigation Menu</small>
+        </div>
+        <select class="form-select bg-secondary text-white border-0 fw-semibold" onchange="if(this.value) window.location.href=this.value;">
+          <option value="/dashboard.html" selected>🏠 Home (Dashboard)</option>
+          <option value="/generate-link.html">🔗 Generate Link</option>
+          <option value="/transactions.html">📋 Transactions</option>
+          <option value="/verification.html">🛡️ Verification Center</option>
+          <option value="/settings.html">⚙️ Settings</option>
+        </select>
+      </div>
       
       <!-- Top Bar Header -->
       <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-wrap gap-2">
-        <h2 class="fw-bold mb-0">Welcome Back, Merchant</h2>
+        <h2 class="fw-bold mb-0">Welcome Back, <span class="userFullName">Merchant</span></h2>
         <div class="d-flex align-items-center gap-2">
           <button id="syncPaymentBtn" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-repeat me-1"></i> Sync Payment</button>
           <button id="signOutBtn" class="btn btn-outline-danger btn-sm">Sign Out</button>
@@ -192,7 +199,7 @@
         <div class="col-md-3 col-6">
           <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="NGN" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
             <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted small fw-semibold">NGN Platform Balance</span>
+              <span class="text-muted small fw-semibold">NGN Balance</span>
               <i class="bi bi-wallet2 text-primary"></i>
             </div>
             <h3 class="fw-bold mt-2 mb-0" id="ngnBalance">₦0</h3>
@@ -202,7 +209,7 @@
         <div class="col-md-3 col-6">
           <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="USD" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
             <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted small fw-semibold">USD Platform Balance</span>
+              <span class="text-muted small fw-semibold">USD Balance</span>
               <i class="bi bi-wallet2 text-primary"></i>
             </div>
             <h3 class="fw-bold mt-2 mb-0" id="usdBalance">$0.00</h3>
@@ -212,7 +219,7 @@
         <div class="col-md-3 col-6">
           <div class="card border-0 shadow-sm p-3 rounded-3 balance-card" data-currency="GBP" style="cursor: pointer; transition: transform 0.2s;" title="Click to Withdraw">
             <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted small fw-semibold">GBP Platform Balance</span>
+              <span class="text-muted small fw-semibold">GBP Balance</span>
               <i class="bi bi-wallet2 text-primary"></i>
             </div>
             <h3 class="fw-bold mt-2 mb-0" id="gbpBalance">£0.00</h3>
@@ -230,9 +237,7 @@
 
       <!-- Virtual Accounts Section -->
       <h4 class="fw-bold mb-3">Your Dedicated Virtual Accounts & Deposit Addresses</h4>
-      <div class="row g-3 mb-4" id="virtualAccountsRow">
-        <!-- Dynamic content injected here depending on KYC state -->
-      </div>
+      <div class="row g-3 mb-4" id="virtualAccountsRow"></div>
 
       <!-- Payment Link Records -->
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -350,7 +355,7 @@
           loader.classList.add('hidden');
           document.body.classList.remove('akonnii-loading');
         }
-      }, 5000); // 5-Second Duration
+      }, 5000);
     });
 
     let userData = null;

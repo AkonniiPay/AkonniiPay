@@ -291,10 +291,6 @@
             border: 1px solid #f1f5f9;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.05);
-        }
 
         .logo-strip {
             background: #ffffff;
@@ -304,19 +300,22 @@
             margin-bottom: 60px;
         }
 
-        @media (max-width: 991px) {
-            .hero-heading { font-size: 2.3rem; }
-            .hero-container { padding: 40px 0; }
-            .floating-widget-top { left: 10px; top: 10px; }
-            .floating-widget-bottom { right: 10px; bottom: 10px; }
-            .section-card-wrapper { padding: 24px; }
-            .brand-text { font-size: 1.25rem !important; }
+        /* Mobile View Fixes: Remove text, enlarge logo, and space out buttons cleanly */
+        @media (max-width: 768px) {
+            .brand-text { display: none !important; } /* Hide 'AkonniiPay' text on mobile */
+            .mobile-brand-logo { width: 46px !important; height: 46px !important; } /* Bigger logo icon */
+            .hero-heading { font-size: 2.1rem; }
+            .hero-container { padding: 30px 0; }
+            .floating-widget-top { left: 5px; top: 10px; }
+            .floating-widget-bottom { right: 5px; bottom: 5px; }
+            .section-card-wrapper { padding: 20px; }
+            .btn-pill-outline, .btn-pill-solid { padding: 7px 14px; font-size: 0.8rem; }
         }
     </style>
 </head>
 <body class="akonnii-loading">
 
-<!-- AkonniiPay Global Brand Loader (5-Second Animated SVG Splash) -->
+<!-- Global Brand Loader -->
 <div id="akonnii-global-loader">
   <div class="akonnii-loader-body">
     <div style="width: 160px; height: 160px; display: flex; align-items: center; justify-content: center;">
@@ -335,8 +334,7 @@
           <rect x="206" y="201" width="123" height="80" rx="14" fill="#0073e6" />
           <rect x="212" y="215" width="111" height="12" rx="3" fill="#ffffff" />
           <rect x="290" y="250" width="20" height="15" rx="3" fill="#ffffff" />
-        </g>
-      </svg>
+        </svg>
     </div>
     <div class="akonnii-progress-track">
       <div class="akonnii-progress-bar"></div>
@@ -344,11 +342,11 @@
   </div>
 </div>
 
-<!-- Navigation Header -->
+<!-- Header / Navigation Bar -->
 <header class="navbar-custom sticky-top">
   <div class="container d-flex justify-content-between align-items-center">
     <a class="navbar-brand fw-bold d-flex align-items-center gap-2 text-dark m-0" href="/">
-        <svg viewBox="0 0 400 400" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
+        <svg class="mobile-brand-logo" viewBox="0 0 400 400" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
             <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
             <path d="M 225 155 C 225 100, 280 75, 318 85 C 318 140, 260 165, 225 155 Z" fill="#00cc44" />
             <path d="M 175 295 C 135 295, 140 200, 195 120 C 235 120, 260 210, 245 270 C 230 300, 195 295, 175 295 Z" fill="#1a52de" />
@@ -367,7 +365,8 @@
         <a href="#about" class="nav-link-custom">Company</a>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
+    <!-- Standalone Buttons spaced out cleanly -->
+    <div class="d-flex align-items-center gap-2 ms-auto">
         <a href="/login.html" class="btn-pill-outline">Sign In</a>
         <a href="/signup.html" class="btn-pill-solid">Get Started</a>
     </div>
@@ -386,7 +385,6 @@
                     Collect payments globally, manage multi-currency dedicated virtual accounts, issue payment links, and liquidate funds directly at market FX rates — all on one unified platform.
                 </p>
 
-                <!-- Email Capture Box -->
                 <form action="/signup.html" method="GET" class="email-capture-box mb-3">
                     <input type="email" name="email" class="email-capture-input" placeholder="Enter your business email" required>
                     <button type="submit" class="btn-pill-solid border-0 ms-2" style="white-space: nowrap;">Get Started</button>
@@ -394,11 +392,8 @@
                 <small class="text-muted" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. No mandatory guest client registration required.</small>
             </div>
 
-            <!-- Merchant Portrait & Continuous Animated UI Badges -->
             <div class="col-lg-6">
                 <div class="hero-image-wrapper">
-                    
-                    <!-- Floating Widget 1: Payment Received -->
                     <div class="floating-widget-top">
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <span class="badge bg-success-subtle text-success p-1 rounded-circle"><i class="bi bi-arrow-down-left fs-6"></i></span>
@@ -407,10 +402,8 @@
                         <h5 class="fw-bold text-success mb-0">$2,200.00 <span class="text-muted font-monospace fs-6">USD</span></h5>
                     </div>
 
-                    <!-- Clean Image Visual -->
                     <img src="/assets/hero-merchant.jpg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';" alt="AkonniiPay Merchant" class="hero-portrait-img">
 
-                    <!-- Floating Widget 2: Multi-Currency Verified -->
                     <div class="floating-widget-bottom">
                         <div class="d-flex justify-content-between align-items-center gap-3">
                             <div>
@@ -420,23 +413,21 @@
                             <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Verified</span>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Animated Marquee Strip (Paystack, Fincra & Flutterwave) -->
+<!-- Animated Marquee Strip -->
 <div class="logo-strip text-center">
     <div class="container">
-        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1.5px; font-size: 11px;">POWERED BY GLOBAL BANKING & MULTI-CURRENCY INFRASTRUCTURE</small>
+        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1.5px; font-size: 11px;">POWERED BY GLOBAL BANKING INFRASTRUCTURE</small>
         <div class="marquee-wrapper">
             <div class="marquee-track">
                 <span class="fw-bold fs-4 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
                 <span class="fw-bold fs-4 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
                 <span class="fw-bold fs-4 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
-                <!-- Repeated set for seamless infinite loop -->
                 <span class="fw-bold fs-4 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
                 <span class="fw-bold fs-4 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i> Fincra</span>
                 <span class="fw-bold fs-4 text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Flutterwave</span>
@@ -445,11 +436,10 @@
     </div>
 </div>
 
-<!-- Section 1: Receive Payments Like a Local -->
+<!-- Section 1 -->
 <section class="container mb-5" id="virtual-accounts">
     <div class="section-card-wrapper">
         <h2 class="section-title">Receive payments like a local</h2>
-        
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="feature-card">
@@ -479,7 +469,7 @@
     </div>
 </section>
 
-<!-- Section 2: Pricing & Rates -->
+<!-- Section 2 -->
 <section class="container mb-5" id="rates">
     <div class="section-card-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -531,7 +521,7 @@
     </div>
 </section>
 
-<!-- Section 3: Company & Director Statement -->
+<!-- Section 3 -->
 <section class="container mb-5" id="about">
     <div class="section-card-wrapper bg-dark text-white p-5 border-0 rounded-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
         <div class="row align-items-center g-4">
@@ -560,7 +550,7 @@
         loader.classList.add('hidden');
         document.body.classList.remove('akonnii-loading');
       }
-    }, 5000); // 5-Second Duration
+    }, 5000);
   });
 </script>
 </body>
