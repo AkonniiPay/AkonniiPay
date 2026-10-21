@@ -27,7 +27,19 @@
     }
   </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+<body class="bg-light d-flex align-items-center justify-content-center akonnii-loading" style="min-height: 100vh;">
+
+  <!-- AkonniiPay Global Brand Loader Overlay -->
+  <div id="akonnii-global-loader">
+    <div class="akonnii-loader-body">
+      <video class="akonnii-loader-media" autoplay loop muted playsinline style="width: 130px; height: auto;">
+        <source src="/animated-logo.webm" type="video/webm">
+      </video>
+      <div class="akonnii-progress-track">
+        <div class="akonnii-progress-bar"></div>
+      </div>
+    </div>
+  </div>
 
   <div class="card border-0 shadow-lg p-4 rounded-4 w-100" style="max-width: 480px;">
     <div class="text-center mb-4">
@@ -102,6 +114,17 @@
   </div>
 
   <script>
+    // Global loader dismissal logic
+    window.addEventListener('load', function() {
+      const loader = document.getElementById('akonnii-global-loader');
+      setTimeout(function() {
+        if (loader) {
+          loader.classList.add('hidden');
+          document.body.classList.remove('akonnii-loading');
+        }
+      }, 350);
+    });
+
     document.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('status') === 'success') {
