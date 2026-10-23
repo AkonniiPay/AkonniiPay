@@ -48,12 +48,16 @@ mongoose.connect(MONGO_URI)
 const otpStorage = new Map();
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // Uses SSL on port 465 to bypass cloud hosting port blocks
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  connectionTimeout: 15000 // Fails cleanly in 15 seconds if credentials are wrong instead of freezing for 5 minutes
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000
 });
 
 // 5. CUSTOM PLATFORM OTP ENDPOINTS
