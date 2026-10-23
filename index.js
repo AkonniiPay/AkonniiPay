@@ -68,9 +68,9 @@ app.post('/api/otp/send', async (req, res) => {
       expires: Date.now() + 10 * 60 * 1000
     });
 
-    // Send email via Resend API (HTTP, bypasses port blocks)
+    // Send email via Resend API using your verified domain
     const { data, error } = await resend.emails.send({
-      from: 'AkonniiPay <onboarding@resend.dev>',
+      from: 'AkonniiPay <noreply@akonniipay.top>',
       to: [email],
       subject: `Your AkonniiPay OTP Verification Code: ${code}`,
       html: `
