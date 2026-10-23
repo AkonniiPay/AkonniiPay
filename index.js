@@ -3,14 +3,17 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const PaymentLink = require('./models/PaymentLink');
 
 dotenv.config();
 
 const app = express();
 
-// 1. TRUST PROXY (Required for Render + express-rate-limit)
+// Initialize Resend with API Key
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// 1. TRUST PROXY (Required for Render)
 app.set('trust proxy', 1);
 
 // 2. MIDDLEWARE & CORS CONFIGURATION
@@ -44,21 +47,8 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('📦 Connected to MongoDB Atlas successfully!'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
 
-// 4. NODEMAILER TRANSPORTER & OTP STORAGE
+// 4. OTP IN-MEMORY STORAGE
 const otpStorage = new Map();
-
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // Uses SSL on port 465 to bypass cloud hosting port blocks
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 15000
-});
 
 // 5. CUSTOM PLATFORM OTP ENDPOINTS
 app.post('/api/otp/send', async (req, res) => {
@@ -78,9 +68,10 @@ app.post('/api/otp/send', async (req, res) => {
       expires: Date.now() + 10 * 60 * 1000
     });
 
-    const mailOptions = {
-      from: `"AkonniiPay Security" <${process.env.EMAIL_USER}>`,
-      to: email,
+    // Send email via Resend API (HTTP, bypasses port blocks)
+    const { data, error } = await resend.emails.send({
+      from: 'AkonniiPay <onboarding@resend.dev>',
+      to: [email],
       subject: `Your AkonniiPay OTP Verification Code: ${code}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
@@ -94,9 +85,13 @@ app.post('/api/otp/send', async (req, res) => {
           <small style="color: #94a3b8; font-size: 11px;">Akonnii Technologies LTD • AkonniiPay Financial Infrastructure</small>
         </div>
       `
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
+    if (error) {
+      console.error('❌ Resend API Error:', error);
+      return res.status(500).json({ success: false, message: 'Failed to dispatch email verification.' });
+    }
+
     return res.json({ success: true, message: `Verification code sent to ${email}` });
   } catch (err) {
     console.error('❌ OTP Email Sending Error:', err);
