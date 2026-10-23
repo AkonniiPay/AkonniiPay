@@ -48,13 +48,12 @@ mongoose.connect(MONGO_URI)
 const otpStorage = new Map();
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+  service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || process.env.SMTP_USER,
-    pass: process.env.EMAIL_PASS || process.env.SMTP_PASS
-  }
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  },
+  connectionTimeout: 15000 // Fails cleanly in 15 seconds if credentials are wrong instead of freezing for 5 minutes
 });
 
 // 5. CUSTOM PLATFORM OTP ENDPOINTS
@@ -76,7 +75,7 @@ app.post('/api/otp/send', async (req, res) => {
     });
 
     const mailOptions = {
-      from: `"AkonniiPay Security" <${process.env.EMAIL_USER || 'no-reply@akonniipay.top'}>`,
+      from: `"AkonniiPay Security" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Your AkonniiPay OTP Verification Code: ${code}`,
       html: `
@@ -97,7 +96,7 @@ app.post('/api/otp/send', async (req, res) => {
     return res.json({ success: true, message: `Verification code sent to ${email}` });
   } catch (err) {
     console.error('❌ OTP Email Sending Error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to send verification code. Please try again.' });
+    return res.status(500).json({ success: false, message: 'Failed to send verification code. Check email configuration.' });
   }
 });
 
