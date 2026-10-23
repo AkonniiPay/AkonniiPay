@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
+const nodemailer = require('nodemailer');
 const PaymentLink = require('./models/PaymentLink');
 
 dotenv.config();
@@ -43,18 +44,106 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('📦 Connected to MongoDB Atlas successfully!'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
 
-// 4. API ROUTES
+// 4. NODEMAILER TRANSPORTER & OTP STORAGE
+const otpStorage = new Map();
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+  auth: {
+    user: process.env.EMAIL_USER || process.env.SMTP_USER,
+    pass: process.env.EMAIL_PASS || process.env.SMTP_PASS
+  }
+});
+
+// 5. CUSTOM PLATFORM OTP ENDPOINTS
+app.post('/api/otp/send', async (req, res) => {
+  try {
+    const { email, actionType } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'User email is required' });
+    }
+
+    // Generate random 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP with 10-minute validity
+    otpStorage.set(email.toLowerCase(), {
+      code,
+      actionType: actionType || 'SECURITY_VERIFICATION',
+      expires: Date.now() + 10 * 60 * 1000
+    });
+
+    const mailOptions = {
+      from: `"AkonniiPay Security" <${process.env.EMAIL_USER || 'no-reply@akonniipay.top'}>`,
+      to: email,
+      subject: `Your AkonniiPay OTP Verification Code: ${code}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <h2 style="color: #0f172a; margin-bottom: 8px;">Security Verification</h2>
+          <p style="color: #64748b; font-size: 14px;">You requested a verification code to authorize a <strong>${actionType || 'platform action'}</strong> on AkonniiPay.</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #2563eb; background: #f1f5f9; padding: 12px 24px; border-radius: 8px; display: inline-block;">${code}</span>
+          </div>
+          <p style="color: #64748b; font-size: 13px;">This code will expire in <strong>10 minutes</strong>. If you did not initiate this request, please secure your account immediately.</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+          <small style="color: #94a3b8; font-size: 11px;">Akonnii Technologies LTD • AkonniiPay Financial Infrastructure</small>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    return res.json({ success: true, message: `Verification code sent to ${email}` });
+  } catch (err) {
+    console.error('❌ OTP Email Sending Error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to send verification code. Please try again.' });
+  }
+});
+
+app.post('/api/otp/verify', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ success: false, message: 'Email and verification code are required' });
+    }
+
+    const record = otpStorage.get(email.toLowerCase());
+
+    if (!record) {
+      return res.status(400).json({ success: false, message: 'No active OTP request found or code has expired.' });
+    }
+
+    if (Date.now() > record.expires) {
+      otpStorage.delete(email.toLowerCase());
+      return res.status(400).json({ success: false, message: 'Verification code has expired. Please request a new one.' });
+    }
+
+    if (record.code !== code.trim()) {
+      return res.status(400).json({ success: false, message: 'Invalid verification code. Please check and try again.' });
+    }
+
+    // Clear OTP after successful validation
+    otpStorage.delete(email.toLowerCase());
+
+    return res.json({ success: true, message: 'OTP verified successfully.' });
+  } catch (err) {
+    console.error('❌ OTP Verification Error:', err);
+    return res.status(500).json({ success: false, message: 'Server error during verification.' });
+  }
+});
+
+// 6. API ROUTES
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/kyc', require('./routes/kyc'));
 app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/webhook', require('./routes/webhook'));
 app.use('/api/user', require('./routes/user'));
-app.use('/api/admin', require('./routes/admin')); // Added Admin API Routes
+app.use('/api/admin', require('./routes/admin'));
 
-// 5. EXPLICIT PAGE ROUTES (Express v5 Safe)
+// 7. EXPLICIT PAGE ROUTES (Express v5 Safe)
 
-// Public Payment Link Slug Resolver
 app.get('/pay/:slug', async (req, res) => {
     try {
         const link = await PaymentLink.findOne({ slug: req.params.slug });
@@ -107,7 +196,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 6. PORT BINDING FOR RENDER
+// 8. PORT BINDING FOR RENDER
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server is running live on port ${PORT}`);

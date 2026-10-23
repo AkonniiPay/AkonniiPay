@@ -102,9 +102,9 @@
 
     @media (max-width: 768px) {
       #wrapper { flex-direction: column !important; }
-      #sidebar-wrapper { display: none !important; } /* Hide dark sidebar entirely on mobile */
+      #sidebar-wrapper { display: none !important; }
       .mobile-dashboard-dropdown-container {
-        display: block !important; /* Show prominent dropdown selection box on top */
+        display: block !important;
       }
       #page-content-wrapper { padding: 16px !important; }
     }
@@ -347,9 +347,39 @@
             </div>
 
             <button type="submit" id="withdrawBtn" class="btn btn-success w-100 fw-semibold py-2">
-              Confirm & Withdraw
+              Proceed to Verification
             </button>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AkonniiPay Security OTP Modal Overlay -->
+  <div class="modal fade" id="otpVerificationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 p-3 text-center">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold w-100">🔐 Email Security Verification</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">We have sent a 6-digit OTP code to <strong id="otpTargetEmail">your email</strong>. Enter the code below to authorize your withdrawal.</p>
+          
+          <div class="d-flex justify-content-center gap-2 mb-3">
+            <input type="text" maxlength="1" class="form-control text-center fs-4 fw-bold otp-digit-box" style="width: 45px; height: 50px;" inputmode="numeric" pattern="[0-9]" />
+            <input type="text" maxlength="1" class="form-control text-center fs-4 fw-bold otp-digit-box" style="width: 45px; height: 50px;" inputmode="numeric" pattern="[0-9]" />
+            <input type="text" maxlength="1" class="form-control text-center fs-4 fw-bold otp-digit-box" style="width: 45px; height: 50px;" inputmode="numeric" pattern="[0-9]" />
+            <input type="text" maxlength="1" class="form-control text-center fs-4 fw-bold otp-digit-box" style="width: 45px; height: 50px;" inputmode="numeric" pattern="[0-9]" />
+            <input type="text" maxlength="1" class="form-control text-center fs-4 fw-bold otp-digit-box" style="width: 45px; height: 50px;" inputmode="numeric" pattern="[0-9]" />
+            <input type="text" maxlength="1" class="form-control text-center fs-4 fw-bold otp-digit-box" style="width: 45px; height: 50px;" inputmode="numeric" pattern="[0-9]" />
+          </div>
+
+          <div id="otpStatusError" class="text-danger small fw-semibold mb-2" style="min-height: 20px;"></div>
+
+          <button type="button" id="confirmOtpBtn" class="btn btn-success w-100 fw-semibold py-2" onclick="verifyOtpAndProcessWithdrawal()">
+            Verify &amp; Execute Withdrawal
+          </button>
         </div>
       </div>
     </div>
@@ -369,6 +399,8 @@
     });
 
     let userData = null;
+    let pendingWithdrawPayload = null;
+    let otpModalBs = null;
     const exchangeRates = { USD: 1350.65, GBP: 1780.20, EUR: 1495.50, NGN: 1 };
 
     async function loadDashboard() {
@@ -638,6 +670,17 @@
       }
     }
 
+    // OTP BOX AUTO-FOCUS EVENT LISTENERS
+    document.querySelectorAll('.otp-digit-box').forEach((box, idx, arr) => {
+      box.addEventListener('input', (e) => {
+        if (e.target.value && idx < arr.length - 1) arr[idx + 1].focus();
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) arr[idx - 1].focus();
+      });
+    });
+
+    // STEP 1: CAPTURE WITHDRAWAL & TRIGGER OTP EMAIL
     document.getElementById('withdrawForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const currency = document.getElementById('withdrawCurrency').value;
@@ -646,11 +689,69 @@
       const accountNumber = document.getElementById('accountNumber').value;
       const accountName = document.getElementById('accountName').value;
 
-      const btn = document.getElementById('withdrawBtn');
+      const userEmail = userData?.email;
+      if (!userEmail) return alert("Session user email not found. Please log in again.");
+
+      pendingWithdrawPayload = { currency, amount, bankName, accountNumber, accountName };
+
+      // Hide withdrawal modal
+      const withdrawModalEl = document.getElementById('withdrawModal');
+      const withdrawModalBs = bootstrap.Modal.getInstance(withdrawModalEl);
+      if (withdrawModalBs) withdrawModalBs.hide();
+
+      // Setup and show OTP modal
+      document.getElementById('otpTargetEmail').innerText = userEmail;
+      document.getElementById('otpStatusError').innerText = '';
+      document.querySelectorAll('.otp-digit-box').forEach(b => b.value = '');
+
+      otpModalBs = new bootstrap.Modal(document.getElementById('otpVerificationModal'));
+      otpModalBs.show();
+      document.querySelectorAll('.otp-digit-box')[0].focus();
+
+      // Trigger OTP backend endpoint
+      try {
+        await fetch('/api/otp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userEmail, actionType: 'WITHDRAWAL' })
+        });
+      } catch (err) {
+        console.error("Error triggering OTP email:", err);
+      }
+    });
+
+    // STEP 2: VERIFY OTP CODE & EXECUTE WITHDRAWAL
+    async function verifyOtpAndProcessWithdrawal() {
+      const boxes = document.querySelectorAll('.otp-digit-box');
+      const code = Array.from(boxes).map(b => b.value).join('');
+
+      if (code.length < 6) {
+        document.getElementById('otpStatusError').innerText = 'Please enter the complete 6-digit code.';
+        return;
+      }
+
+      const btn = document.getElementById('confirmOtpBtn');
       btn.disabled = true;
-      btn.innerText = 'Processing Payout...';
+      btn.innerText = 'Verifying Code...';
 
       try {
+        // 1. Verify OTP with custom server endpoint
+        const otpRes = await fetch('/api/otp/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userData.email, code })
+        });
+
+        const otpData = await otpRes.json();
+        if (!otpRes.ok || !otpData.success) {
+          document.getElementById('otpStatusError').innerText = otpData.message || 'Invalid verification code.';
+          btn.disabled = false;
+          btn.innerText = 'Verify & Execute Withdrawal';
+          return;
+        }
+
+        // 2. Process Withdrawal API request once OTP is confirmed
+        btn.innerText = 'Processing Payout...';
         const token = localStorage.getItem('token');
         const res = await fetch('/api/wallet/withdraw', {
           method: 'POST',
@@ -658,25 +759,26 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ currency, amount, bankName, accountNumber, accountName })
+          body: JSON.stringify(pendingWithdrawPayload)
         });
 
         const data = await res.json();
         if (res.ok && data.success) {
-          alert(data.message);
+          if (otpModalBs) otpModalBs.hide();
+          alert(data.message || "Withdrawal successful!");
           window.location.reload();
         } else {
-          alert(data.message || data.error || "Withdrawal failed.");
+          document.getElementById('otpStatusError').innerText = data.message || data.error || "Withdrawal failed.";
           btn.disabled = false;
-          btn.innerText = 'Confirm & Withdraw';
+          btn.innerText = 'Verify & Execute Withdrawal';
         }
       } catch (err) {
         console.error("Withdraw error:", err);
-        alert("Network error processing withdrawal.");
+        document.getElementById('otpStatusError').innerText = "Network error processing withdrawal.";
         btn.disabled = false;
-        btn.innerText = 'Confirm & Withdraw';
+        btn.innerText = 'Verify & Execute Withdrawal';
       }
-    });
+    }
 
     document.getElementById('syncPaymentBtn')?.addEventListener('click', async () => {
       const token = localStorage.getItem('token');

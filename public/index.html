@@ -302,11 +302,11 @@
         /* STRICT MOBILE VIEW FIXES FOR HEADER & LOGO */
         @media (max-width: 768px) {
             .brand-text-name {
-                display: none !important; /* Hide 'AkonniiPay' word entirely on mobile */
+                display: none !important;
             }
             .mobile-standalone-logo {
                 width: 54px !important;
-                height: 54px !important; /* Larger prominent logo */
+                height: 54px !important;
             }
             .hero-heading { font-size: 2.1rem; }
             .hero-container { padding: 30px 0; }
@@ -351,7 +351,6 @@
 <header class="navbar-custom sticky-top">
   <div class="container d-flex justify-content-between align-items-center">
     <a class="navbar-brand fw-bold d-flex align-items-center text-dark m-0 p-0" href="/">
-        <!-- Bigger standalone logo SVG on mobile -->
         <svg class="mobile-standalone-logo" viewBox="0 0 400 400" width="42" height="42" xmlns="http://www.w3.org/2000/svg">
             <path d="M 230 135 C 230 80, 275 50, 315 50 C 315 105, 270 135, 230 135 Z" fill="#00b33c" />
             <path d="M 225 155 C 225 100, 280 75, 318 85 C 318 140, 260 165, 225 155 Z" fill="#00cc44" />
@@ -371,7 +370,6 @@
         <a href="#about" class="nav-link-custom">Company</a>
     </div>
 
-    <!-- Standalone Buttons -->
     <div class="d-flex align-items-center gap-2">
         <a href="/login.html" class="btn-pill-outline">Sign In</a>
         <a href="/signup.html" class="btn-pill-solid">Get Started</a>
@@ -395,7 +393,7 @@
                     <input type="email" name="email" class="email-capture-input" placeholder="Enter your business email" required>
                     <button type="submit" class="btn-pill-solid border-0 ms-2">Get Started</button>
                 </form>
-                <small class="text-muted" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. No mandatory guest client registration required.</small>
+                <small class="text-muted" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. Direct custom email verification on payouts.</small>
             </div>
 
             <div class="col-lg-6">
