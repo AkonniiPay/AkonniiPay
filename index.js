@@ -181,7 +181,8 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.get('/signup', (req, res) => {
+// Secret Signup Route (Unguessable URL)
+app.get('/partner-onboard-ak79x2q', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'signup.html'));
 });
 
