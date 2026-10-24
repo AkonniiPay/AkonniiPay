@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AkonniiPay - Global Financial Infrastructure for Businesses</title>
+    <title>AkonniiPay - Enterprise Financial Infrastructure & Ledger</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/css/style.css">
@@ -179,26 +179,6 @@
             margin-bottom: 32px;
         }
 
-        .email-capture-box {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 50px;
-            padding: 6px 6px 6px 20px;
-            display: flex;
-            align-items: center;
-            max-width: 480px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-        }
-
-        .email-capture-input {
-            border: none;
-            outline: none;
-            width: 100%;
-            font-size: 0.95rem;
-            color: var(--ak-dark);
-            background: transparent;
-        }
-
         .hero-image-wrapper {
             position: relative;
             border-radius: 28px;
@@ -364,15 +344,14 @@
     </a>
 
     <div class="d-none d-lg-flex align-items-center gap-2">
-        <a href="#features" class="nav-link-custom">Products</a>
+        <a href="#features" class="nav-link-custom">Infrastructure</a>
         <a href="#virtual-accounts" class="nav-link-custom">Solutions</a>
-        <a href="#rates" class="nav-link-custom">Pricing & Rates</a>
+        <a href="#rates" class="nav-link-custom">Compliance & Ledger</a>
         <a href="#about" class="nav-link-custom">Company</a>
     </div>
 
     <div class="d-flex align-items-center gap-2">
-        <a href="/login.html" class="btn-pill-outline">Sign In</a>
-        <a href="/signup.html" class="btn-pill-solid">Get Started</a>
+        <a href="/login.html" class="btn-pill-solid">Client Login</a>
     </div>
   </div>
 </header>
@@ -382,18 +361,28 @@
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
+                <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3">AKONNII TECHNOLOGIES LTD • INTERNAL INFRASTRUCTURE</span>
                 <h1 class="hero-heading mb-4">
-                    The financial platform that powers direct client payments
+                    Proprietary financial ledger and transaction management
                 </h1>
                 <p class="hero-description">
-                    Collect payments globally, manage multi-currency dedicated virtual accounts, issue payment links, and liquidate funds directly at market FX rates — all on one unified platform.
+                    Secure internal financial portal for Akonii Technologies LTD. Designed to manage proprietary ecosystem collections, track multi-currency settlement flows, and reconcile transaction records.
                 </p>
 
-                <form action="/signup.html" method="GET" class="email-capture-box mb-3">
-                    <input type="email" name="email" class="email-capture-input" placeholder="Enter your business email" required>
-                    <button type="submit" class="btn-pill-solid border-0 ms-2">Get Started</button>
-                </form>
-                <small class="text-muted" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Fast setup. Direct custom email verification on payouts.</small>
+                <div class="p-4 bg-white border border-light rounded-4 shadow-sm mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="fs-3 text-primary"><i class="bi bi-shield-lock-fill"></i></div>
+                        <div>
+                            <h6 class="fw-bold mb-1">Invite-Only Access Portal</h6>
+                            <p class="text-muted small mb-0">Public self-registration is closed. Authorized partners and clients may log in using their secure credentials or invite links.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <a href="/login.html" class="btn-pill-solid px-4 py-2">Access Portal Login</a>
+                </div>
+                <small class="text-muted d-block mt-3" style="font-size: 12px;"><i class="bi bi-shield-check text-success me-1"></i> Secured enterprise gateway with direct email OTP verification.</small>
             </div>
 
             <div class="col-lg-6">
@@ -401,20 +390,20 @@
                     <div class="floating-widget-top">
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <span class="badge bg-success-subtle text-success p-1 rounded-circle"><i class="bi bi-arrow-down-left fs-6"></i></span>
-                            <small class="fw-bold text-dark" style="font-size: 11px;">Payment Received</small>
+                            <small class="fw-bold text-dark" style="font-size: 11px;">Corporate Inbound Log</small>
                         </div>
-                        <h5 class="fw-bold text-success mb-0">$2,200.00 <span class="text-muted font-monospace fs-6">USD</span></h5>
+                        <h5 class="fw-bold text-success mb-0">Verified <span class="text-muted font-monospace fs-6">LEDGER</span></h5>
                     </div>
 
-                    <img src="/assets/hero-merchant.jpg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';" alt="AkonniiPay Merchant" class="hero-portrait-img">
+                    <img src="/assets/hero-merchant.jpg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80';" alt="Akonnii Technologies Portal" class="hero-portrait-img">
 
                     <div class="floating-widget-bottom">
                         <div class="d-flex justify-content-between align-items-center gap-3">
                             <div>
-                                <small class="text-muted fw-bold d-block" style="font-size: 10px;">MULTI-CURRENCY BALANCE</small>
-                                <span class="fw-bold text-dark fs-6">USD • GBP • EUR • NGN</span>
+                                <small class="text-muted fw-bold d-block" style="font-size: 10px;">ENTERPRISE ENTITY</small>
+                                <span class="fw-bold text-dark fs-6">Akonii Technologies LTD</span>
                             </div>
-                            <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Verified</span>
+                            <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> RC: 9950190</span>
                         </div>
                     </div>
                 </div>
@@ -426,7 +415,7 @@
 <!-- Animated Marquee Strip -->
 <div class="logo-strip text-center">
     <div class="container">
-        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1.5px; font-size: 11px;">POWERED BY GLOBAL BANKING INFRASTRUCTURE</small>
+        <small class="text-uppercase text-muted fw-bold d-block mb-3" style="letter-spacing: 1.5px; font-size: 11px;">POWERED BY SECURE BANKING RAILS</small>
         <div class="marquee-wrapper">
             <div class="marquee-track">
                 <span class="fw-bold fs-4 text-dark"><i class="bi bi-layers-fill text-primary me-2"></i> Paystack</span>
@@ -443,30 +432,27 @@
 <!-- Section 1 -->
 <section class="container mb-5" id="virtual-accounts">
     <div class="section-card-wrapper">
-        <h2 class="section-title">Receive payments like a local</h2>
+        <h2 class="section-title">Enterprise Financial Capabilities</h2>
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="feature-card">
                     <div class="fs-2 text-primary mb-3"><i class="bi bi-globe-americas"></i></div>
-                    <h5 class="fw-bold">Receiving Virtual Accounts</h5>
-                    <p class="text-muted small">Get dedicated multi-currency accounts (USD, GBP, EUR, NGN) to receive direct wire transfers from clients.</p>
-                    <a href="/signup.html" class="text-primary fw-semibold small text-decoration-none">Explore Accounts <i class="bi bi-arrow-right"></i></a>
+                    <h5 class="fw-bold">Dedicated Collections</h5>
+                    <p class="text-muted small">Manage internal virtual accounts (USD, GBP, EUR, NGN) for corporate service revenues and partner payouts.</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="feature-card">
                     <div class="fs-2 text-primary mb-3"><i class="bi bi-link-45deg"></i></div>
-                    <h5 class="fw-bold">Custom Payment Links</h5>
-                    <p class="text-muted small">Send instant payment links to clients anywhere in the world and track status live in your dashboard.</p>
-                    <a href="/signup.html" class="text-primary fw-semibold small text-decoration-none">Generate Link <i class="bi bi-arrow-right"></i></a>
+                    <h5 class="fw-bold">Secure Payment Routing</h5>
+                    <p class="text-muted small">Generate controlled links and process transactions through verified gateway infrastructure.</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="feature-card">
                     <div class="fs-2 text-primary mb-3"><i class="bi bi-currency-exchange"></i></div>
-                    <h5 class="fw-bold">Smart FX Liquidation</h5>
-                    <p class="text-muted small">Convert foreign currencies directly into local bank payouts at optimum real-market parallel exchange rates.</p>
-                    <a href="/signup.html" class="text-primary fw-semibold small text-decoration-none">View FX Rates <i class="bi bi-arrow-right"></i></a>
+                    <h5 class="fw-bold">Automated Reconciliation</h5>
+                    <p class="text-muted small">Track inbound and outbound flows with clear audit trails for accurate financial reporting.</p>
                 </div>
             </div>
         </div>
@@ -478,46 +464,46 @@
     <div class="section-card-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
-                <h2 class="section-title mb-1">Transparent Pricing & Rates</h2>
-                <p class="text-muted small mb-0">No hidden maintenance fees or surprise charges.</p>
+                <h2 class="section-title mb-1">Infrastructure Architecture</h2>
+                <p class="text-muted small mb-0">Built for corporate compliance, security, and structured financial tracking.</p>
             </div>
-            <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-semibold"><i class="bi bi-shield-check me-1"></i> Real-Time Parallel Rates</span>
+            <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-semibold"><i class="bi bi-shield-check me-1"></i> Enterprise Compliant</span>
         </div>
 
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="card border-0 bg-light p-4 rounded-4 h-100">
                     <span class="text-muted small fw-bold text-uppercase">Direct NGN Collections</span>
-                    <h2 class="fw-bold text-dark mt-2 mb-1">1.5%</h2>
-                    <p class="text-muted small mb-3">Capped at a maximum of ₦2,000 per transaction.</p>
+                    <h2 class="fw-bold text-dark mt-2 mb-1">Optimized</h2>
+                    <p class="text-muted small mb-3">Structured processing for Nigerian Naira channels.</p>
                     <ul class="list-unstyled small text-muted mb-0">
                         <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Bank Transfer & USSD</li>
-                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Instant Wallet Credit</li>
-                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Free Guest Checkout</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Instant Ledger Credit</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Secure Webhook Tracking</li>
                     </ul>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card border-0 bg-light p-4 rounded-4 h-100 border-primary">
-                    <span class="text-primary small fw-bold text-uppercase">Multi-Currency Collection</span>
-                    <h2 class="fw-bold text-primary mt-2 mb-1">2.9%</h2>
-                    <p class="text-muted small mb-3">Flat processing rate for USD, GBP & EUR payments.</p>
+                    <span class="text-primary small fw-bold text-uppercase">Multi-Currency Rails</span>
+                    <h2 class="fw-bold text-primary mt-2 mb-1">Global</h2>
+                    <p class="text-muted small mb-3">Foreign currency tracking for international partners.</p>
                     <ul class="list-unstyled small text-muted mb-0">
                         <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Dedicated Virtual IBANs</li>
-                        <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Global Card Processing</li>
-                        <li><i class="bi bi-check-circle-fill text-primary me-2"></i> Zero Cross-Border Markup</li>
+                        <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i> Cross-Border Settlement</li>
+                        <li><i class="bi bi-check-circle-fill text-primary me-2"></i> Transparent FX Logs</li>
                     </ul>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card border-0 bg-light p-4 rounded-4 h-100">
-                    <span class="text-muted small fw-bold text-uppercase">Direct Bank Payouts</span>
-                    <h2 class="fw-bold text-dark mt-2 mb-1">₦10 - ₦50</h2>
-                    <p class="text-muted small mb-3">Standard NIBSS bank settlement fee depending on volume.</p>
+                    <span class="text-muted small fw-bold text-uppercase">Direct Liquidation</span>
+                    <h2 class="fw-bold text-dark mt-2 mb-1">Automated</h2>
+                    <p class="text-muted small mb-3">Instant NIBSS bank settlement & reconciliation.</p>
                     <ul class="list-unstyled small text-muted mb-0">
                         <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Same-Day Liquidation</li>
                         <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Interbank Market Rate</li>
-                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Automated Reconciliation</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-2"></i> Full Audit Trail</li>
                     </ul>
                 </div>
             </div>
@@ -530,9 +516,9 @@
     <div class="section-card-wrapper bg-dark text-white p-5 border-0 rounded-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
-                <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3">GLOBAL AMBITION</span>
+                <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3">CORPORATE GOVERNANCE</span>
                 <blockquote class="blockquote fs-4 fw-normal text-light mb-4">
-                    "AkonniiPay removed the payment friction that was slowing down direct client payments. Immediate collection, transparent fees, and direct FX conversion completely transformed our operations."
+                    "AkonniiPay operates as the dedicated internal transaction ledger and collection tracking system for Akonii Technologies LTD, ensuring robust compliance and seamless financial management."
                 </blockquote>
                 <div>
                     <h5 class="fw-bold text-white mb-0">Luqman Abiodun Oyewole</h5>
@@ -540,7 +526,7 @@
                 </div>
             </div>
             <div class="col-lg-4 text-center text-lg-end">
-                <a href="/signup.html" class="btn-pill-solid px-4 py-3 fs-6 d-inline-block">Open Business Account</a>
+                <a href="/login.html" class="btn-pill-solid px-4 py-3 fs-6 d-inline-block">Client Portal Login</a>
             </div>
         </div>
     </div>
