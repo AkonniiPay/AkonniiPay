@@ -181,9 +181,14 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Secret Signup Route (Unguessable URL)
+// Explicitly block/redirect standard public signup requests to homepage
+app.get(['/signup', '/signup.html'], (req, res) => {
+    res.redirect('/login.html');
+});
+
+// Secret Signup Route (Serves the renamed hidden HTML file)
 app.get('/partner-onboard-ak79x2q', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'signup.html'));
+    res.sendFile(path.join(__dirname, 'public', 'partner-onboard-ak79x2q.html'));
 });
 
 app.get('/checkout', (req, res) => {
